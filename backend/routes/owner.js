@@ -1,0 +1,13 @@
+import { Router } from "express";
+import { addItem, addLoan, deleteItem, deleteLoan, getItems, getLoans, ownerLogin, updateItem, updateLoan } from "../controllers/authController.js";
+const ownerRouter=Router();
+ownerRouter.post("/ownerLogin",ownerLogin);
+ownerRouter.post("/getItems",getItems);
+ownerRouter.post("/getLoans",getLoans);
+ownerRouter.post("/updateItem",updateItem);
+ownerRouter.post("/deleteItem",deleteItem);
+ownerRouter.post("/addItem",addItem);
+ownerRouter.post("/updateLoan",updateLoan);
+ownerRouter.post("/deleteLoan",deleteLoan);
+ownerRouter.post("/addLoan",addLoan);
+export default ownerRouter;
