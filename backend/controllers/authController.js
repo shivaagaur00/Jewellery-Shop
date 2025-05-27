@@ -2,7 +2,6 @@ import Owner from "./../Models/Owner.js";
 
 export const ownerLogin = async (req, res) => {
   try {
-    console.log("Yes Request in Controller");
     const { username, password } = req.body;
     const user = await Owner.findOne({ "owners.ID": username });
     if (!user) {
@@ -264,7 +263,6 @@ export const getItemById = async (req, res) => {
   }
 };
 export const addLoan = async (req, res) => {
-  console.log(req.body);
   try {
     const { 
       customer,
@@ -276,6 +274,7 @@ export const addLoan = async (req, res) => {
       purity,
       dateIssued,
       dueDate,
+      holderName,
       status,
       collateralImages
     } = req.body;
@@ -304,6 +303,7 @@ export const addLoan = async (req, res) => {
       purity:purity,
       dateIssued:dateIssued,
       dueDate:dueDate,
+      holderName:holderName,
       status:status,
       collateralImages:collateralImages,
     };
@@ -327,7 +327,7 @@ export const addLoan = async (req, res) => {
 };
 export const updateLoan = async (req, res) => {
   try {
-    const {id,updateData} = req.body;
+    const {id,updateData,loanPaidedAmount } = req.body;
 
     if (!id) {
       return res.status(400).json({ message: 'Loan ID is required' });
@@ -342,12 +342,22 @@ export const updateLoan = async (req, res) => {
     if (loanIndex === -1) {
       return res.status(404).json({ message: 'Loan not found' });
     }
+    if(updateData.status==="Paid"){
+      owner.loans[loanIndex].datePaid = new Date().toISOString();
+      owner.loans[loanIndex].loanPaidedAmount = loanPaidedAmount;
+      owner.transactions.push({
+        transactionMode:"Cash",
+        transactionAmount:loanPaidedAmount,
+        customerID:updateData.customer,
+        date:new Date().toISOString(),
+        status:"Success"
+      })
+    }
     owner.loans[loanIndex] = {
       ...owner.loans[loanIndex].toObject(),
       ...updateData
     };
     await owner.save();
-
     res.status(200).json({
       success: true,
       message: 'Loan updated successfully',
@@ -403,5 +413,128 @@ export const deleteLoan = async (req, res) => {
       message: 'Failed to delete loan',
       error: error.message 
     });
+  }
+};
+
+export const addCustomer = async (req, res) => {
+  const { customerData } = req.body;
+
+  // Validate required fields
+  if (!customerData || !customerData.id || !customerData.name || !customerData.password) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Missing required fields: email, name, and password are required' 
+    });
+  }
+
+  try {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerData.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format'
+      });
+    }
+
+    // Find owner and check for existing customer
+    const owner = await Owner.findOne();
+    if (!owner) {
+      return res.status(404).json({
+        success: false,
+        message: 'Owner not found'
+      });
+    }
+
+    // Check if customer already exists
+    const existingCustomer = owner.consumers.find(consumer => consumer.id === customerData.id);
+    if (existingCustomer) {
+      return res.status(409).json({
+        success: false,
+        message: 'Customer with this email already exists'
+      });
+    }
+
+    // Create new customer with default values
+    const newCustomer = {
+      id: customerData.id,           // Email as ID
+      name: customerData.name,
+      password: customerData.password, // Note: In production, you should hash this
+      image: customerData.image || '',
+      address: customerData.address || '',
+      contactNumber: customerData.contactNumber || '',
+      orders: [],
+      purchases: [],
+      loan: [],
+      exchange: [],
+      offers: [],
+      transactions:[],
+      date: ""+new Date().toISOString()
+    };
+    owner.consumers.push(newCustomer);
+    await owner.save();
+
+    return res.status(201).json({
+      success: true,
+      message: 'Customer added successfully',
+      customer: {
+        id: newCustomer.id,
+        name: newCustomer.name,
+        date: newCustomer.date
+      }
+    });
+
+  } catch (error) {
+    console.error('Error adding customer:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+export const getCustomers = async (req, res) => {
+  try {
+    const owner = await Owner.findOne();
+    if (!owner) {
+      return res.status(404).json({
+        status: 1,
+        message: "Owner not found",
+      });
+    }
+    res.status(200).json({
+      status: 0,
+      data: owner.consumers,
+      message: "Items retrieved successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 1,
+      message: error.message,
+    });
+  }
+};
+
+export const getSpecificCustomer =async(req,res)=>{
+  try{
+  console.log(0);
+  const {customerId}=req.body;
+console.log(1);
+  const owner=await Owner.findOne();
+  if(!owner){
+     return res.status(404).json({
+        status: 1,
+        message: "Owner not found",
+      });
+    }
+    console.log(customerId);
+    let customer =await owner.consumers.find(consumer => consumer._id.toString() === customerId);
+    console.log(customer);
+    if(!customer) return res.status(201).json({message:"not found"});
+    return res.status(200).json({data:customer});
+  }
+  catch(err){
+    console.log(err);
   }
 };

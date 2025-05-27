@@ -17,8 +17,8 @@ const transactionInfo=new mongoose.Schema({
         required:true,
     },
     transactionAmount:{
-        type:String,
-        required:true,
+        type:Number,
+        // required:true,
     },
     customerID:{
         type:String,
@@ -27,6 +27,9 @@ const transactionInfo=new mongoose.Schema({
     date:{
         type:String,
         required:true,
+    },
+    status:{
+        type:String,
     }
 })
 const ordersInfo=new mongoose.Schema({
@@ -162,6 +165,9 @@ const loansInfo= new mongoose.Schema({
         type:Number,
         required:true,
     },
+    loanPaidedAmount:{
+        type:Number,
+    },
     interestRate:{
         type:Number,
         required:true,
@@ -182,6 +188,12 @@ const loansInfo= new mongoose.Schema({
         type:String,
         required:true,
     },  
+    datePaid:{
+        type:String,
+    },
+    holderName:{
+        type:String,
+    },
     status:{
         type:String,
         required:true,
@@ -192,10 +204,6 @@ const loansInfo= new mongoose.Schema({
     }
 });
 const salesInfo=new mongoose.Schema({
-    ID:{
-        type:String,
-        required:true,
-    },
     customerID:{
         type:String,
         required:true,
@@ -316,9 +324,9 @@ const consumerInfo=new mongoose.Schema({
         type:String,
         required:true,
     },
-    emailId:{
-        trpe:String,
-    },
+    // email:{
+    //     type:String,
+    // },
     orders:{
         type:[ordersInfo],
         required:true,
@@ -339,9 +347,20 @@ const consumerInfo=new mongoose.Schema({
         type:[offerInfo],
         required:true,
     },
-    
-});
+    image:{
+        type:String,
+        required:true,
+    },
+    transactions:{
+        type:[transactionInfo],
+        required:true,
+    },
+    date:{
+        type:String,
+        // required:true,
+    }
 
+});
 const ownerSchema=new mongoose.Schema({
     owners:[ownersInfo],
     item:[itemsInfo],
@@ -351,6 +370,7 @@ const ownerSchema=new mongoose.Schema({
     pendingAmount:[salesInfo],
     purchaseExchange:[exchangeInfo],
     consumers:[consumerInfo],
+    transactions:[transactionInfo],
 });
 const Owner = mongoose.model("owner", ownerSchema);
 

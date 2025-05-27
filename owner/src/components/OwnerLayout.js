@@ -4,6 +4,9 @@ import SideBar from './SideBar';
 import DashboardContent from './DashboardContent';
 import Loan from './Loan';
 import  Customers  from './Customers';
+import Orders from './Orders';
+import Transactions from './Transactions';
+import Settings from './Settings';
 const MainHome = ({ activeTab }) => {
   const renderContent = () => {
     switch(activeTab) {
@@ -12,13 +15,13 @@ const MainHome = ({ activeTab }) => {
       case 'inventory':
         return <InventoryContent />;
       case 'orders':
-        return <OrdersContent />;
+        return <Orders />;
       case 'customers':
         return <Customers />;
       case 'transactions':
-        return <TransactionsContent />;
+        return <Transactions />;
       case 'settings':
-        return <SettingsContent />;
+        return <Settings/>;
       case 'loan':
         return <Loan/>;
       default:
@@ -35,24 +38,17 @@ const MainHome = ({ activeTab }) => {
   );
 };
 
-
-const OrdersContent = () => (
-  <div className="bg-white rounded-xl shadow p-6">
-    <p>Orders management content will appear here</p>
-  </div>
-);
-
 const CustomersContent = () => (
   <div className="bg-white rounded-xl shadow p-6">
     <p>Customers management content will appear here</p>
   </div>
 );
 
-const TransactionsContent = () => (
-  <div className="bg-white rounded-xl shadow p-6">
-    <p>Transactions content will appear here</p>
-  </div>
-);
+// const TransactionsContent = () => (
+//   <div className="bg-white rounded-xl shadow p-6">
+//     <p>Transactions content will appear here</p>
+//   </div>
+// );
 
 const SettingsContent = () => (
   <div className="bg-white rounded-xl shadow p-6">

@@ -96,3 +96,44 @@ export const deleteLoan=async(data)=>{
         console.log(error);
     }
 }
+
+export const addCustomer=async(data)=>{
+    try {
+        const res=await axios.post(`${URL}/addCustomer`,data);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const getCustomers=async()=>{
+    try {
+        let res=await axios.post(`${URL}/getCustomers`);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const updateCustomer=async()=>{
+    try {
+        let res=await axios.post(`${URL}/getCustomers`);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const deleteCustomer=async()=>{
+    try {
+        let res=await axios.post(`${URL}/getCustomers`);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const getSpecificCustomer=async(data)=>{
+    try {
+        let res=await axios.post(`${URL}/getSpecificCustomer`,data);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}

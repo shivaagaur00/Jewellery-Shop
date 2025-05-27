@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addItem, addLoan, deleteItem, deleteLoan, getItems, getLoans, ownerLogin, updateItem, updateLoan } from "../controllers/authController.js";
+import { addCustomer, addItem, addLoan, deleteItem, deleteLoan, getCustomers, getItems, getLoans, getSpecificCustomer, ownerLogin, updateItem, updateLoan } from "../controllers/authController.js";
 const ownerRouter=Router();
 ownerRouter.post("/ownerLogin",ownerLogin);
 ownerRouter.post("/getItems",getItems);
@@ -10,4 +10,7 @@ ownerRouter.post("/addItem",addItem);
 ownerRouter.post("/updateLoan",updateLoan);
 ownerRouter.post("/deleteLoan",deleteLoan);
 ownerRouter.post("/addLoan",addLoan);
+ownerRouter.post("/addCustomer",addCustomer)
+ownerRouter.post("/getCustomers",getCustomers);
+ownerRouter.post("/getSpecificCustomer",getSpecificCustomer);
 export default ownerRouter;

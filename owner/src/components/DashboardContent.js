@@ -55,7 +55,7 @@ const DashboardContent = () => {
       <div className="flex-1 mr-5">
         <h1 className="text-3xl font-bold text-amber-900 border-b-2 border-amber-400 pb-2 mb-6">
           <TrendingUpIcon className="align-middle mr-2 text-amber-500" />
-          JewelMaster Dashboard
+          Dashboard
         </h1>
 
         {/* Market Prices Section */}

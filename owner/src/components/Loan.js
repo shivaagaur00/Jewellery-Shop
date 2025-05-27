@@ -4,7 +4,6 @@ import {
   MonetizationOn as LoanIcon,
   AttachMoney as MoneyIcon,
   Scale as WeightIcon,
-  LocalOffer as ItemIcon,
   Person as CustomerIcon,
   CalendarToday as DateIcon,
   Search as SearchIcon,
@@ -31,7 +30,7 @@ const Loan = () => {
   const [loading,setLoading]=useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [showFilters, setShowFilters] = useState(false);
+  // const [showFilters, setShowFilters] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [currentLoan, setCurrentLoan] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -47,6 +46,7 @@ const Loan = () => {
     interestRate: 12,
     dateIssued: new Date().toISOString().split('T')[0],
     dueDate: '',
+    holderName:'',
     status: LOAN_STATUS.PENDING,
     collateralImages: []
   });
@@ -77,17 +77,11 @@ const calculateAmountDue = (loan) => {
   try {
     const issuedDate = new Date(loan.dateIssued);
     const today = new Date();
-
-    // Calculate full months elapsed
     let monthsElapsed = (today.getFullYear() - issuedDate.getFullYear()) * 12 +
                         (today.getMonth() - issuedDate.getMonth());
-
-    // Get start of current month
     const monthStart = new Date(today.getFullYear(), today.getMonth(), issuedDate.getDate());
     
-    // Handle case where the issue date day is greater than today's day (e.g., 31st issued, today is 19th)
     if (isNaN(monthStart.getTime()) || monthStart > today) {
-      // fallback: use first day of month
       monthStart.setDate(1);
     }
 
@@ -175,14 +169,14 @@ const calculateAmountDue = (loan) => {
     e.preventDefault();
     try {
       if (currentLoan) {
-        const updatedLoan = await updateLoan({id:currentLoan._id,updateData:formData});
+        const loanAmountToPaid=calculateAmountDue(formData);
+        console.log(loanAmountToPaid);
+        const updatedLoan = await updateLoan({id:currentLoan._id,updateData:formData,loanPaidedAmount:loanAmountToPaid});
         setLoans(loans.map(loan => 
           loan._id === updatedLoan._id ? updatedLoan : loan
         ));
       } else {
-        console.log(formData);
         const newLoan = await addLoan(formData);
-          
       }
       setShowForm(false);
     } catch (error) {
@@ -310,6 +304,7 @@ const calculateAmountDue = (loan) => {
                 <th className="p-3 text-left">Amount Due</th>
                 <th className="p-3 text-left">Issued Date</th>
                 <th className="p-3 text-left">Due Date</th>
+                
                 <th className="p-3 text-left">Holder Name</th>
                 
                 <th className="p-3 text-left">Status</th>
@@ -318,7 +313,7 @@ const calculateAmountDue = (loan) => {
             </thead>
             <tbody>
               {filteredLoans.map(loan => (
-                <tr key={loan._id} className="border-b border-amber-50 hover:bg-amber-50 transition-colors text-[14px]">
+                <tr key={loan._id} className="border-b border-amber-50 hover:bg-amber-50 transition-colors text-[12px]">
                   <td className="p-3 text-[9px]">#{loan._id}</td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
@@ -371,10 +366,21 @@ const calculateAmountDue = (loan) => {
                       {new Date(loan.dueDate).toLocaleDateString()}
                     </div>
                   </td>
+                  <td className='p-3'>
+                    <div className="flex items-center gap-2">
+                      {loan.holderName}
+                    </div>
+                  </td>
                   <td className="p-3">
                     <div className={getStatusStyle(loan.status)}>
-                      {getStatusIcon(loan.status)}
-                      {loan.status}
+                      {getStatusIcon(loan.status)}<>
+  {loan.status}
+  {loan.status === "Paid" && loan.datePaid && (
+    <>  Date: {new Date(loan.datePaid).toLocaleDateString()} </>
+  )}
+</>
+
+
                     </div>
                   </td>
                   <td className="p-3">
@@ -551,6 +557,16 @@ const calculateAmountDue = (loan) => {
                   />
                 </div>
                 
+                <div>
+                  <label className="block text-sm font-medium text-amber-900 mb-1">Holder Name</label>
+                  <input
+                    type="text"
+                    name="holderName"
+                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    value={formData.holderName}
+                    onChange={handleInputChange}
+                  />
+                </div>
               </div>
 
               <div className="mb-4">
@@ -566,6 +582,7 @@ const calculateAmountDue = (loan) => {
                   ))}
                 </select>
               </div>
+              
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-amber-900 mb-1">
