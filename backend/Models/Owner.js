@@ -22,7 +22,6 @@ const transactionInfo=new mongoose.Schema({
     },
     customerID:{
         type:String,
-        required:true
     },
     date:{
         type:String,
@@ -30,6 +29,9 @@ const transactionInfo=new mongoose.Schema({
     },
     status:{
         type:String,
+    },
+    description: {
+        type: String,
     }
 })
 const ordersInfo=new mongoose.Schema({
@@ -167,6 +169,7 @@ const loansInfo= new mongoose.Schema({
     },
     loanPaidedAmount:{
         type:Number,
+        default: 0
     },
     interestRate:{
         type:Number,
@@ -197,25 +200,35 @@ const loansInfo= new mongoose.Schema({
     status:{
         type:String,
         required:true,
+        enum: ['Active', 'Completed', 'Defaulted'],
+        default: 'Active'
     },
     collateralImages:{
         type:[],
         required:true,
+    },
+    totalPayable: {
+        type: String
+    },
+    remainingAmount: {
+        type: String
     }
 });
 const salesInfo=new mongoose.Schema({
     customerID:{
         type:String,
-        required:true,
+        // required:true,
     },
     metalType:{
         type:String,
         required:true,
     },
-    orderType:{
+    customerName:{
         type:String,
-        required:true,
-    }, 
+    },
+    customerPhone:{
+        type:String,
+    },
     itemName:{
         type:String,
         required:true,
@@ -229,19 +242,39 @@ const salesInfo=new mongoose.Schema({
         required:true,
     },
     metalPrice:{
-        type:String,
+        type:Number,
     },
     depositeAmount:{
         type:Number,
-        required:true,
+    },
+    orderType:{
+        type:String,
     },
     pendingAmount:{
         type:Number,
         required:true,
     },
+    discount:{
+        type:Number,
+    },
+    notes:{
+        type:String,
+    },
+    makingCharges:{
+        type:String,
+    },
+    isExistingCustomer:{
+        type:Boolean,
+    },
+    paymentMethod:{
+        type:String,
+    },
     date:{
         type:String,
         required:true,
+    },
+    taxes:{
+        type:Number,
     }      
 });
 const exchangeInfo=new mongoose.Schema({
@@ -303,10 +336,28 @@ const offerInfo=new mongoose.Schema({
         required:true,
     },
 })
+const notificationInfo = new mongoose.Schema({
+    type: {
+        type: String,
+        required: true,
+        enum: ['LOAN_CREATED', 'EMI_OVERDUE', 'LOW_STOCK', 'PAYMENT_DUE', 'GENERAL']
+    },
+    message: {
+        type: String,
+        required: true
+    },
+    date: {
+        type: String,
+        required: true
+    },
+    isRead: {
+        type: Boolean,
+        default: false
+    }
+});
 const consumerInfo=new mongoose.Schema({
     id:{
         type:String,
-        required:true,
     },
     password:{
         type:String,
@@ -358,8 +409,14 @@ const consumerInfo=new mongoose.Schema({
     date:{
         type:String,
         // required:true,
+    },
+    sales:{
+        type:[String],
+    },
+    notifications: {
+        type: [notificationInfo],
+        required: true,
     }
-
 });
 const ownerSchema=new mongoose.Schema({
     owners:[ownersInfo],

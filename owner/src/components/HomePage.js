@@ -1,38 +1,46 @@
-import React, { useState } from 'react';
-import { Lock, Person, Visibility, VisibilityOff } from '@mui/icons-material';
 import { login } from '../api/owners';
+import React, { useState, useEffect } from 'react';
+import { Lock, Person, Visibility, VisibilityOff } from '@mui/icons-material';
+import { useDispatch, useSelector } from 'react-redux';
+import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
 import { useNavigate } from "react-router-dom";
 import MJnoBG from "./../assets/MJnoBG.png";
-
 const HomePage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
+  const { isAuthenticated, loading, error } = useSelector((state) => state.auth);
   const navigate = useNavigate();
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/ownerLayout");
+    }
+  }, [isAuthenticated, navigate]);
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!username || !password) {
-      setError('Please enter both username and password');
-      return;
+  e.preventDefault();
+  if (!username || !password) {
+    dispatch(loginFailure('Please enter both username and password'));
+    return;
+  }
+  
+  dispatch(loginStart());
+  try {
+    const res = await login({ username, password });
+    if (res.status !== 200) {
+      dispatch(loginFailure(res.data.message || 'Login failed'));
+    } else {
+      // Assuming your API returns user data on successful login
+      dispatch(loginSuccess(res.data.user));
+      navigate("/ownerLayout");
     }
-    
-    setIsLoading(true);
-    try {
-      const res = await login({ username, password });
-      if (res.status !== 200) {
-        setError(res.data.message || 'Login failed');
-      } else {
-        navigate("/ownerLayout");
-      }
-    } catch (err) {
-      setError('An error occurred during login');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  } catch (err) {
+    dispatch(loginFailure('An error occurred during login'));
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
@@ -42,9 +50,9 @@ const HomePage = () => {
         <div className="absolute bottom-1/3 right-1/3 w-40 h-40 rounded-full bg-amber-500 filter blur-3xl"></div>
       </div>
       
-      {/* Main content container - changes layout based on screen size */}
+      {/* Main content container */}
       <div className="relative z-10 w-full max-w-6xl flex flex-col lg:flex-row items-center justify-center lg:items-stretch gap-8 lg:gap-12">
-        {/* Left side (60%) - Branding - hidden on mobile, shown on tablet and up */}
+        {/* Left side (60%) - Branding */}
         <div className="hidden md:flex md:w-full lg:w-3/5 flex-col items-center lg:items-start justify-center pr-0 lg:pr-12">
           <div className="flex flex-col items-center lg:items-start">
             <img 
@@ -62,7 +70,7 @@ const HomePage = () => {
           </div>
         </div>
 
-        {/* Mobile header (shown only on mobile) */}
+        {/* Mobile header */}
         <div className="md:hidden w-full flex flex-col items-center mb-6">
           <img 
             src={MJnoBG} 
@@ -75,7 +83,7 @@ const HomePage = () => {
           <div className="mt-2 h-1 w-12 bg-gradient-to-r from-amber-400 to-transparent rounded-full"></div>
         </div>
 
-        {/* Right side (40%) - Login Card - full width on mobile, constrained on larger screens */}
+        {/* Right side (40%) - Login Card */}
         <div className="w-full md:w-2/3 lg:w-2/5 max-w-md">
           <div className="bg-white bg-opacity-5 backdrop-filter backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-gray-700 border-opacity-30">
             {/* Card header */}
@@ -109,7 +117,7 @@ const HomePage = () => {
                       value={username}
                       onChange={(e) => {
                         setUsername(e.target.value);
-                        setError('');
+                        if (error) dispatch(loginFailure(''));
                       }}
                       className="w-full pl-10 pr-3 py-2 sm:py-3 bg-gray-800 bg-opacity-50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition text-white placeholder-gray-400 text-sm sm:text-base"
                       placeholder="Enter your username"
@@ -128,7 +136,7 @@ const HomePage = () => {
                       value={password}
                       onChange={(e) => {
                         setPassword(e.target.value);
-                        setError('');
+                        if (error) dispatch(loginFailure(''));
                       }}
                       className="w-full pl-10 pr-10 py-2 sm:py-3 bg-gray-800 bg-opacity-50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition text-white placeholder-gray-400 text-sm sm:text-base"
                       placeholder="Enter your password"
@@ -170,14 +178,14 @@ const HomePage = () => {
                 {/* Submit button */}
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={loading}
                   className={`w-full py-2 sm:py-3 px-4 rounded-lg transition duration-300 shadow-lg ${
-                    isLoading
+                    loading
                       ? 'bg-amber-700 cursor-not-allowed'
                       : 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600'
                   } text-white font-medium flex items-center justify-center text-sm sm:text-base`}
                 >
-                  {isLoading ? (
+                  {loading ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

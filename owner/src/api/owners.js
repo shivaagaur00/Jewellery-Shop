@@ -137,3 +137,12 @@ export const getSpecificCustomer=async(data)=>{
         console.log(error);
     }
 }
+export const addSale=async(data)=>{
+    try {
+        console.log(data);
+        let res=await axios.post(`${URL}/addSale`,data);
+        return res;
+    } catch (error) {
+        console.log(error);   
+    }
+}

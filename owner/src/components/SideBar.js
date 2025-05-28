@@ -7,15 +7,20 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   Menu as MenuIcon,
-  Diamond,
 } from "@mui/icons-material";
 import RealEstateAgentIcon from '@mui/icons-material/RealEstateAgent';
 import { useState } from "react";
+import { useDispatch } from 'react-redux';
+import { logout } from '../store/authSlice';
+import { useNavigate } from 'react-router-dom';
 import MJnoBG from "../assets/MJnoBG.png";
 
 const SideBar = ({ activeTab, setActiveTab }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: <DashboardIcon /> },
@@ -26,6 +31,20 @@ const SideBar = ({ activeTab, setActiveTab }) => {
     { id: "transactions", label: "Transactions", icon: <TransactionsIcon /> },
     { id: "settings", label: "Settings", icon: <SettingsIcon /> },
   ];
+
+  const handleLogout = async () => {
+  setIsLoggingOut(true);
+  try {
+    dispatch(logout());
+    setTimeout(() => {
+      navigate('/');
+    }, 500);
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    setIsLoggingOut(false);
+  }
+};
 
   return (
     <div
@@ -44,7 +63,7 @@ const SideBar = ({ activeTab, setActiveTab }) => {
           </div>
         ) : (
           <div className="flex justify-center items-center w-full h-full">
-            <img src={MJnoBG} alt="MJ Logo" />
+            <img src={MJnoBG} alt="MJ Logo" className="w-12 h-auto" />
           </div>
         )}
 
@@ -93,21 +112,29 @@ const SideBar = ({ activeTab, setActiveTab }) => {
         <button
           onMouseEnter={() => setHoveredItem("logout")}
           onMouseLeave={() => setHoveredItem(null)}
-          onClick={() => console.log("Logout")}
+          onClick={handleLogout}
+          disabled={isLoggingOut}
           className={`w-full flex items-center py-2 px-4 rounded-lg transition-all duration-200 ${
-            hoveredItem === "logout"
+            hoveredItem === "logout" || isLoggingOut
               ? "bg-gray-700 text-white"
               : "text-gray-300"
-          }`}
+          } ${isLoggingOut ? "opacity-75 cursor-not-allowed" : ""}`}
         >
-          <LogoutIcon
-            className={`${
-              hoveredItem === "logout" ? "text-red-400" : "text-gray-400"
-            }`}
-          />
+          {isLoggingOut ? (
+            <svg className="animate-spin h-5 w-5 mr-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            <LogoutIcon
+              className={`${
+                hoveredItem === "logout" ? "text-red-400" : "text-gray-400"
+              }`}
+            />
+          )}
           {!collapsed && (
             <span className="ml-3 font-medium">
-              {hoveredItem === "logout" ? "Logging out..." : "Logout"}
+              {isLoggingOut ? "Logging out..." : "Logout"}
             </span>
           )}
         </button>

@@ -11,8 +11,14 @@ import {
   Category as CategoryIcon,
   Close as CloseIcon,
 } from "@mui/icons-material";
-import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
-import { addItem, getItems, updateItem, deleteItem } from "../api/owners";
+import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
+import {
+  addItem,
+  getItems,
+  updateItem,
+  deleteItem,
+  addSale,
+} from "../api/owners";
 import axios from "axios";
 const InventoryContent = () => {
   const [inventory, setInventory] = useState([]);
@@ -26,37 +32,34 @@ const InventoryContent = () => {
     ID: "",
     metalType: "",
     itemName: "",
-    weight: "",
+    weight: 0,
     itemPurity: "24K",
     metalPrice: "",
     quantity: 0,
     tags: [],
     category: "",
-    date: new Date().toISOString().split('T')[0], 
+    date: new Date().toISOString().split("T")[0],
     image: "",
   });
-  const[showSaleModal,setShowSaleModal]=useState(false);
-  const[sale,setSale]=useState({
-    customerID:"",
-    metalType:"",
-    orderType:"",
-    itemName:"",
-    weight:"",
-    itemPurity:"",
-    metalPrice:"",
-    depositeAmount:"",
-    pendingAmount:"",
-    date:"",  
-    discount:"",
-    makingCharges:"",
-    paymentMethod:"",
-    taxes:"",
-    isExistingCustomer: false,
+  const [showSaleModal, setShowSaleModal] = useState(false);
+  const [sale, setSale] = useState({
+  isExistingCustomer: false,
   customerID: "",
   customerName: "",
   customerPhone: "",
   customerEmail: "",
-  });
+  orderType: "Full Payment",
+  depositeAmount: 0,
+  amountPayingNow: 0,
+  totalPayable: 0,
+  pendingAmount: 0,
+  date: new Date().toISOString().split("T")[0],
+  discount: 0,
+  makingCharges: 0,
+  paymentMethod: "",
+  taxes: 0,
+  notes: "",
+});
   const getStockStatus = (quantity) => {
     if (quantity <= 0) return "Out of Stock";
     if (quantity <= 2) return "Low Stock";
@@ -86,7 +89,83 @@ const InventoryContent = () => {
       [name]: value,
     }));
   };
+  useEffect(() => {
+    if (currentItem) {
+      const total =
+        Number(currentItem.metalPrice) +
+        Number(sale.makingCharges || 0) +
+        Number(sale.taxes || 0) -
+        Number(sale.discount || 0);
 
+      setSale((prev) => ({
+        ...prev,
+        totalPayable: total,
+        pendingAmount:
+          sale.orderType === "Partial Payment"
+            ? total - Number(sale.amountPayingNow || 0)
+            : 0,
+      }));
+    }
+  }, [
+    sale.orderType,
+    sale.amountPayingNow,
+    sale.makingCharges,
+    sale.taxes,
+    sale.discount,
+    currentItem,
+  ]);
+  const handleSaleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+
+  // Validation
+  if (!sale.paymentMethod) {
+    setError("Please select a payment method");
+    return;
+  }
+
+  if (sale.orderType === "Partial Payment" && !sale.amountPayingNow) {
+    setError("Please enter amount paying now for partial payment");
+    return;
+  }
+
+  if (!sale.isExistingCustomer && !sale.customerName) {
+    setError("Please enter customer name");
+    return;
+  }
+
+  try {
+    const totalPayable = 
+      Number(currentItem.metalPrice) +
+      Number(sale.makingCharges || 0) +
+      Number(sale.taxes || 0) -
+      Number(sale.discount || 0);
+
+    const saleData = {
+      ...sale,
+      itemID: currentItem.ID,
+      totalPayable: totalPayable,
+      amountPayingNow: Number(sale.amountPayingNow || totalPayable),
+      pendingAmount: sale.orderType === "Partial Payment" 
+        ? totalPayable - Number(sale.amountPayingNow) 
+        : 0,
+      metalPrice: currentItem.metalPrice,
+      weight: currentItem.weight,
+      itemPurity: currentItem.itemPurity
+    };
+
+    const res = await addSale({ data: saleData });
+    if (res.status === 200) {
+      setShowSaleModal(false);
+      // Reset form or show success message
+    } else {
+      setError(res.message || "Failed to record sale");
+    }
+  } catch (err) {
+    setError("An error occurred while recording the sale");
+    console.error(err);
+  }
+};
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -96,15 +175,15 @@ const InventoryContent = () => {
       const cloudinaryFormData = new FormData();
       cloudinaryFormData.append("file", file);
       cloudinaryFormData.append("upload_preset", "ml_default");
-      
+
       const cloudinaryResponse = await axios.post(
         "https://api.cloudinary.com/v1_1/dthriaot4/image/upload",
         cloudinaryFormData
       );
       // console.log(cloudinaryResponse.data.secure_url);
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        image: cloudinaryResponse.data.secure_url
+        image: cloudinaryResponse.data.secure_url,
       }));
       setIsUploading(false);
     } catch (err) {
@@ -116,9 +195,15 @@ const InventoryContent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!formData.itemName || !formData.category || !formData.weight || 
-        !formData.itemPurity || !formData.metalPrice || formData.quantity === undefined) {
-      setError('Please enter all required details');
+    if (
+      !formData.itemName ||
+      !formData.category ||
+      !formData.weight ||
+      !formData.itemPurity ||
+      !formData.metalPrice ||
+      formData.quantity === undefined
+    ) {
+      setError("Please enter all required details");
       return;
     }
 
@@ -126,13 +211,16 @@ const InventoryContent = () => {
       const itemData = {
         ...formData,
         quantity: Number(formData.quantity),
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        tags: formData.tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter((tag) => tag),
       };
 
       let res;
       // console.log(itemData);
       if (currentItem) {
-        res = await updateItem({id:currentItem._id,updateData:itemData});
+        res = await updateItem({ id: currentItem._id, updateData: itemData });
       } else {
         res = await addItem(itemData);
       }
@@ -152,7 +240,7 @@ const InventoryContent = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this item?")) {
       try {
-        const res = await deleteItem({id:id});
+        const res = await deleteItem({ id: id });
         if (res.status === 200) {
           fetchInventory(); // Refresh the inventory
         } else {
@@ -169,28 +257,31 @@ const InventoryContent = () => {
       ID: "",
       metalType: "",
       itemName: "",
-      weight: "",
+      weight: 0,
       itemPurity: "24K",
       metalPrice: "",
       quantity: 0,
       tags: [],
       category: "",
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split("T")[0],
       image: "",
     });
     setCurrentItem(null);
     setError("");
   };
 
-  const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         item.category.toLowerCase().includes(searchTerm.toLowerCase());
-    
+  const filteredInventory = inventory.filter((item) => {
+    const matchesSearch =
+      item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase());
+
     const stockStatus = getStockStatus(item.quantity);
-    
+
     if (activeTab === "all") return matchesSearch;
-    if (activeTab === "low") return matchesSearch && stockStatus === "Low Stock";
-    if (activeTab === "out") return matchesSearch && stockStatus === "Out of Stock";
+    if (activeTab === "low")
+      return matchesSearch && stockStatus === "Low Stock";
+    if (activeTab === "out")
+      return matchesSearch && stockStatus === "Out of Stock";
     return matchesSearch;
   });
 
@@ -201,7 +292,9 @@ const InventoryContent = () => {
         <div className="fixed top-0 left-64 right-0 z-50 bg-white p-6 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center">
             <InventoryIcon className="text-yellow-600 mr-3 text-3xl" />
-            <h1 className="text-2xl font-bold text-yellow-700">Gold Shop Inventory</h1>
+            <h1 className="text-2xl font-bold text-yellow-700">
+              Gold Shop Inventory
+            </h1>
           </div>
           <button
             className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
@@ -228,22 +321,34 @@ const InventoryContent = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
+
           <div className="flex gap-2">
             <button
-              className={`px-3 py-1 rounded-lg ${activeTab === "all" ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              className={`px-3 py-1 rounded-lg ${
+                activeTab === "all"
+                  ? "bg-yellow-600 text-white"
+                  : "bg-gray-200 text-gray-700"
+              }`}
               onClick={() => setActiveTab("all")}
             >
               All
             </button>
             <button
-              className={`px-3 py-1 rounded-lg ${activeTab === "low" ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              className={`px-3 py-1 rounded-lg ${
+                activeTab === "low"
+                  ? "bg-yellow-600 text-white"
+                  : "bg-gray-200 text-gray-700"
+              }`}
               onClick={() => setActiveTab("low")}
             >
               Low Stock
             </button>
             <button
-              className={`px-3 py-1 rounded-lg ${activeTab === "out" ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              className={`px-3 py-1 rounded-lg ${
+                activeTab === "out"
+                  ? "bg-yellow-600 text-white"
+                  : "bg-gray-200 text-gray-700"
+              }`}
               onClick={() => setActiveTab("out")}
             >
               Out of Stock
@@ -265,16 +370,36 @@ const InventoryContent = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-yellow-600 text-white">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Item Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"><WeightIcon className="inline mr-1" /> Weight</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Purity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"><PriceIcon className="inline mr-1" /> Price (₹)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Quantity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Stock Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"><GemIcon className="inline mr-1" /> Metal</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  Item Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  Category
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <WeightIcon className="inline mr-1" /> Weight
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  Purity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <PriceIcon className="inline mr-1" /> Price (₹)
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  Quantity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  Stock Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <GemIcon className="inline mr-1" /> Metal
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -283,17 +408,21 @@ const InventoryContent = () => {
                   const stockStatus = getStockStatus(item.quantity);
                   return (
                     <tr key={item._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.ID}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.ID}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           {item.image && (
-                            <img 
-                              src={item.image} 
-                              alt={item.itemName} 
+                            <img
+                              src={item.image}
+                              alt={item.itemName}
                               className="w-10 h-10 rounded-full object-cover mr-3"
                             />
                           )}
-                          <div className="text-sm font-medium text-gray-900">{item.itemName}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {item.itemName}
+                          </div>
                         </div>
                         {item.tags && item.tags.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
@@ -309,10 +438,15 @@ const InventoryContent = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <CategoryIcon className="inline mr-1 text-gray-400" /> {item.category}
+                        <CategoryIcon className="inline mr-1 text-gray-400" />{" "}
+                        {item.category}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.weight}g</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.itemPurity}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.weight}g
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.itemPurity}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         ₹{item.metalPrice.toLocaleString()}
                       </td>
@@ -332,7 +466,9 @@ const InventoryContent = () => {
                           {stockStatus}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.metalType || "-"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.metalType || "-"}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           className="text-yellow-600 hover:text-yellow-900 mr-3"
@@ -340,8 +476,8 @@ const InventoryContent = () => {
                             setCurrentItem(item);
                             setFormData({
                               ...item,
-                              tags: item.tags.join(', '),
-                              date: item.date.split('T')[0],
+                              tags: item.tags.join(", "),
+                              date: item.date.split("T")[0],
                             });
                             setShowForm(true);
                           }}
@@ -355,19 +491,37 @@ const InventoryContent = () => {
                           <DeleteIcon />
                         </button>
                         <button
-                        className="text-green-600 hover:text-green-700"
-                        onClick={()=>{
-                          setCurrentItem(item);
-                          // setFormData({
-                          //     ...item,
-                          //     tags: item.tags.join(', '),
-                          //     date: item.date.split('T')[0],
-                          //   });
-                          setShowSaleModal(true);
-                            
-                        }}
+                          className="text-green-600 hover:text-green-700"
+                          onClick={() => {
+                            setCurrentItem(item);
+                            setShowSaleModal(true);
+                            setSale({
+                              ...sale,
+                              itemName: item.itemName,
+                              itemID: item.ID,
+                              weight: item.weight,
+                              itemPurity: item.itemPurity,
+                              metalPrice: item.metalPrice,
+                              metalType: item.metalType,
+                              date: new Date().toISOString().split("T")[0],
+                              isExistingCustomer: false,
+                              customerID: "",
+                              customerName: "",
+                              customerPhone: "",
+                              customerEmail: "",
+                              orderType: "Full Payment",
+                              depositeAmount: 0,
+                              totalPayble: 0,
+                              pendingAmount: 0,
+                              discount: 0,
+                              makingCharges: 0,
+                              paymentMethod: "",
+                              taxes: 0,
+                              notes: "",
+                            });
+                          }}
                         >
-                        <PointOfSaleIcon/>
+                          <PointOfSaleIcon />
                         </button>
                       </td>
                     </tr>
@@ -375,7 +529,10 @@ const InventoryContent = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan="10" className="px-6 py-4 text-center text-gray-500">
+                  <td
+                    colSpan="10"
+                    className="px-6 py-4 text-center text-gray-500"
+                  >
                     No items found
                   </td>
                 </tr>
@@ -402,13 +559,13 @@ const InventoryContent = () => {
                   <CloseIcon />
                 </button>
               </div>
-              
+
               {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
                   <span className="block sm:inline">{error}</span>
                 </div>
               )}
-              
+
               <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Left Column */}
@@ -487,12 +644,16 @@ const InventoryContent = () => {
                         onChange={handleImageUpload}
                         disabled={isUploading}
                       />
-                      {isUploading && <p className="text-sm text-gray-500 mt-1">Uploading image...</p>}
+                      {isUploading && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          Uploading image...
+                        </p>
+                      )}
                       {formData.image && (
                         <div className="mt-2">
-                          <img 
-                            src={formData.image} 
-                            alt="Preview" 
+                          <img
+                            src={formData.image}
+                            alt="Preview"
                             className="h-20 w-20 object-cover rounded"
                           />
                         </div>
@@ -614,7 +775,11 @@ const InventoryContent = () => {
                     className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg"
                     disabled={isUploading}
                   >
-                    {isUploading ? "Uploading..." : currentItem ? "Update Item" : "Add Item"}
+                    {isUploading
+                      ? "Uploading..."
+                      : currentItem
+                      ? "Update Item"
+                      : "Add Item"}
                   </button>
                 </div>
               </form>
@@ -622,382 +787,464 @@ const InventoryContent = () => {
           </div>
         </div>
       )}
-  {showSaleModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-    <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-4 border-b pb-4">
-          <div className="flex items-center">
-            <PointOfSaleIcon className="text-green-600 mr-2" />
-            <h2 className="text-2xl font-bold text-green-700">
-              Sell Jewelry Item
-            </h2>
-          </div>
-          <button
-            className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
-            onClick={() => {
-              setShowSaleModal(false);
-              setSale({
-                ...sale,
-                isExistingCustomer: false,
-                customerID: "",
-                customerName: "",
-                customerPhone: "",
-                customerEmail: "",
-                orderType: "Full Payment",
-                depositeAmount: "",
-                pendingAmount: "",
-                date: new Date().toISOString().split('T')[0],
-                discount: "",
-                makingCharges: "",
-                paymentMethod: "",
-                taxes: "",
-                notes: ""
-              });
-            }}
-          >
-            <CloseIcon />
-          </button>
-        </div>
-
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-            <span className="block sm:inline">{error}</span>
-          </div>
-        )}
-
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          console.log("Sale submitted:", sale);
-          setShowSaleModal(false);
-        }}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Customer Information */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
-                Customer Details
-              </h3>
-              
-              <div className="mb-4">
-                <label className="flex items-center cursor-pointer">
-                  <div className="relative">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only" 
-                      checked={sale.isExistingCustomer}
-                      onChange={(e) => setSale({...sale, isExistingCustomer: e.target.checked})}
-                    />
-                    <div className={`block w-10 h-6 rounded-full ${sale.isExistingCustomer ? 'bg-green-400' : 'bg-gray-400'}`}></div>
-                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${sale.isExistingCustomer ? 'transform translate-x-4' : ''}`}></div>
-                  </div>
-                  <div className="ml-3 text-sm font-medium text-gray-700">
-                    Existing Customer
-                  </div>
-                </label>
-              </div>
-
-              {sale.isExistingCustomer ? (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Customer ID <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="customerID"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    value={sale.customerID}
-                    onChange={(e) => setSale({...sale, customerID: e.target.value})}
-                    required
-                  />
+      {showSaleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4 border-b pb-4">
+                <div className="flex items-center">
+                  <PointOfSaleIcon className="text-green-600 mr-2" />
+                  <h2 className="text-2xl font-bold text-green-700">
+                    Sell Jewelry Item
+                  </h2>
                 </div>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Customer Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="customerName"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      value={sale.customerName}
-                      onChange={(e) => setSale({...sale, customerName: e.target.value})}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        name="customerPhone"
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        value={sale.customerPhone}
-                        onChange={(e) => setSale({...sale, customerPhone: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        name="customerEmail"
-                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                        value={sale.customerEmail}
-                        onChange={(e) => setSale({...sale, customerEmail: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Order Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="orderType"
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  value={sale.orderType}
-                  onChange={(e) => setSale({...sale, orderType: e.target.value})}
-                  required
+                <button
+                  className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100"
+                  onClick={() => {
+                    setShowSaleModal(false);
+                    setSale({
+                      isExistingCustomer: false,
+                      customerID: "",
+                      customerName: "",
+                      customerPhone: "",
+                      customerEmail: "",
+                      orderType: "Full Payment",
+                      depositeAmount: 0,
+                      amountPayingNow: 0,
+                      totalPayable: 0,
+                      pendingAmount: 0,
+                      date: new Date().toISOString().split("T")[0],
+                      discount: 0,
+                      makingCharges: 0,
+                      paymentMethod: "",
+                      taxes: 0,
+                      notes: "",
+                    });
+                  }}
                 >
-                  <option value="Full Payment">Full Payment</option>
-                  <option value="Partial Payment">Partial Payment</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Item Information */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <GemIcon className="text-yellow-600 mr-2" />
-                Item Details
-              </h3>
-              
-              <div className="mb-4 grid grid-cols-2 gap-4">
-                <div className="bg-white p-3 rounded-lg border">
-                  <p className="text-xs text-gray-500">Item ID</p>
-                  <p className="font-medium">{currentItem?.ID || '-'}</p>
-                </div>
-                <div className="bg-white p-3 rounded-lg border">
-                  <p className="text-xs text-gray-500">Category</p>
-                  <p className="font-medium">{currentItem?.category || '-'}</p>
-                </div>
+                  <CloseIcon />
+                </button>
               </div>
 
-              <div className="mb-4 grid grid-cols-3 gap-4">
-                <div className="bg-white p-3 rounded-lg border">
-                  <p className="text-xs text-gray-500">Weight</p>
-                  <p className="font-medium">{currentItem?.weight}g</p>
-                </div>
-                <div className="bg-white p-3 rounded-lg border">
-                  <p className="text-xs text-gray-500">Purity</p>
-                  <p className="font-medium">{currentItem?.itemPurity}</p>
-                </div>
-                <div className="bg-white p-3 rounded-lg border">
-                  <p className="text-xs text-gray-500">Price</p>
-                  <p className="font-medium">₹{currentItem?.metalPrice?.toLocaleString()}</p>
-                </div>
-              </div>
-
-              {currentItem?.image && (
-                <div className="mb-4 flex justify-center">
-                  <img 
-                    src={currentItem.image} 
-                    alt={currentItem.itemName} 
-                    className="h-24 w-24 object-contain rounded border"
-                  />
+              {error && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+                  <span className="block sm:inline">{error}</span>
                 </div>
               )}
-            </div>
+              <form onSubmit={handleSaleSubmit}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Customer Information */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-2 text-green-600"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Customer Details
+                    </h3>
 
-            {/* Payment Information */}
-            <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-600" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
-                </svg>
-                Payment Details
-              </h3>
+                    <div className="mb-4">
+                      <label className="flex items-center cursor-pointer">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={sale.isExistingCustomer}
+                            onChange={(e) =>
+                              setSale({
+                                ...sale,
+                                isExistingCustomer: e.target.checked,
+                              })
+                            }
+                          />
+                          <div
+                            className={`block w-10 h-6 rounded-full ${
+                              sale.isExistingCustomer
+                                ? "bg-green-400"
+                                : "bg-gray-400"
+                            }`}
+                          ></div>
+                          <div
+                            className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${
+                              sale.isExistingCustomer
+                                ? "transform translate-x-4"
+                                : ""
+                            }`}
+                          ></div>
+                        </div>
+                        <div className="ml-3 text-sm font-medium text-gray-700">
+                          Existing Customer
+                        </div>
+                      </label>
+                    </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Making Charges (₹)
-                  </label>
-                  <input
-                    type="number"
-                    name="makingCharges"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    value={sale.makingCharges}
-                    onChange={(e) => setSale({...sale, makingCharges: e.target.value})}
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Discount (₹)
-                  </label>
-                  <input
-                    type="number"
-                    name="discount"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    value={sale.discount}
-                    onChange={(e) => setSale({...sale, discount: e.target.value})}
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Taxes (₹)
-                  </label>
-                  <input
-                    type="number"
-                    name="taxes"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    value={sale.taxes}
-                    onChange={(e) => setSale({...sale, taxes: e.target.value})}
-                    min="0"
-                  />
-                </div>
-              </div>
+                    {sale.isExistingCustomer ? (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Customer ID <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="customerID"
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          value={sale.customerID}
+                          onChange={(e) =>
+                            setSale({ ...sale, customerID: e.target.value })
+                          }
+                          required
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Customer Name{" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="customerName"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            value={sale.customerName}
+                            onChange={(e) =>
+                              setSale({ ...sale, customerName: e.target.value })
+                            }
+                            required
+                          />
+                        </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Method <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="paymentMethod"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    value={sale.paymentMethod}
-                    onChange={(e) => setSale({...sale, paymentMethod: e.target.value})}
-                    required
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Phone Number{" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="tel"
+                              name="customerPhone"
+                              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                              value={sale.customerPhone}
+                              onChange={(e) =>
+                                setSale({
+                                  ...sale,
+                                  customerPhone: e.target.value,
+                                })
+                              }
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Email
+                            </label>
+                            <input
+                              type="email"
+                              name="customerEmail"
+                              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                              value={sale.customerEmail}
+                              onChange={(e) =>
+                                setSale({
+                                  ...sale,
+                                  customerEmail: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Order Type <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="orderType"
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        value={sale.orderType}
+                        onChange={(e) =>
+                          setSale({ ...sale, orderType: e.target.value })
+                        }
+                        required
+                      >
+                        <option value="Full Payment">Full Payment</option>
+                        <option value="Partial Payment">Partial Payment</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Item Information */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <GemIcon className="text-yellow-600 mr-2" />
+                      Item Details
+                    </h3>
+
+                    <div className="mb-4 grid grid-cols-2 gap-4">
+                      <div className="bg-white p-3 rounded-lg border">
+                        <p className="text-xs text-gray-500">Item ID</p>
+                        <p className="font-medium">{currentItem?.ID || "-"}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border">
+                        <p className="text-xs text-gray-500">Category</p>
+                        <p className="font-medium">
+                          {currentItem?.category || "-"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-3 gap-4">
+                      <div className="bg-white p-3 rounded-lg border">
+                        <p className="text-xs text-gray-500">Weight</p>
+                        <p className="font-medium">{currentItem?.weight}g</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border">
+                        <p className="text-xs text-gray-500">Purity</p>
+                        <p className="font-medium">{currentItem?.itemPurity}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border">
+                        <p className="text-xs text-gray-500">Price</p>
+                        <p className="font-medium">
+                          ₹{currentItem?.metalPrice?.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {currentItem?.image && (
+                      <div className="mb-4 flex justify-center">
+                        <img
+                          src={currentItem.image}
+                          alt={currentItem.itemName}
+                          className="h-24 w-24 object-contain rounded border"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payment Information */}
+                  <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-2 text-green-600"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Payment Details
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Making Charges (₹)
+                        </label>
+                        <input
+                          type="number"
+                          name="makingCharges"
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          value={sale.makingCharges}
+                          onChange={(e) =>
+                            setSale({ ...sale, makingCharges: e.target.value })
+                          }
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Discount (₹)
+                        </label>
+                        <input
+                          type="number"
+                          name="discount"
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          value={sale.discount}
+                          onChange={(e) =>
+                            setSale({ ...sale, discount: e.target.value })
+                          }
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Taxes (₹)
+                        </label>
+                        <input
+                          type="number"
+                          name="taxes"
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          value={sale.taxes}
+                          onChange={(e) =>
+                            setSale({ ...sale, taxes: e.target.value })
+                          }
+                          min="0"
+                        />
+                      </div>
+
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Payment Method <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          name="paymentMethod"
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          value={sale.paymentMethod}
+                          onChange={(e) =>
+                            setSale({ ...sale, paymentMethod: e.target.value })
+                          }
+                          required
+                        >
+                          <option value="">Select Payment Method</option>
+                          <option value="Cash">Cash</option>
+                          <option value="Credit Card">Credit Card</option>
+                          <option value="Debit Card">Debit Card</option>
+                          <option value="UPI">UPI</option>
+                          <option value="Bank Transfer">Bank Transfer</option>
+                          <option value="Cheque">Cheque</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Date <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          name="date"
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          value={sale.date}
+                          onChange={(e) =>
+                            setSale({ ...sale, date: e.target.value })
+                          }
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {sale.orderType === "Partial Payment" && (
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Pending Amount (₹)
+                          </label>
+                          <input
+                            type="number"
+                            name="pendingAmount"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-gray-100"
+                            value={sale.pendingAmount}
+                            readOnly
+                          />
+                        </div>
+                        {/* Replace the depositeAmount field with this: */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Amount Paying Now (₹){" "}
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            name="amountPayingNow"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            value={sale.amountPayingNow}
+                            onChange={(e) =>
+                              setSale({
+                                ...sale,
+                                amountPayingNow: e.target.value,
+                              })
+                            }
+                            required
+                            min="0"
+                            max={sale.totalPayable}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Additional Notes
+                      </label>
+                      <textarea
+                        name="notes"
+                        rows="2"
+                        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        value={sale.notes}
+                        onChange={(e) =>
+                          setSale({ ...sale, notes: e.target.value })
+                        }
+                        placeholder="Any special instructions or remarks..."
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3 border-t pt-4">
+                  <button
+                    type="button"
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                    onClick={() => {
+                      setShowSaleModal(false);
+                      setSale({
+                        ...sale,
+                        isExistingCustomer: false,
+                        customerID: "",
+                        customerName: "",
+                        customerPhone: "",
+                        customerEmail: "",
+                        orderType: "Full Payment",
+                        depositeAmount: 0,
+                        pendingAmount: "",
+                        date: new Date().toISOString().split("T")[0],
+                        discount: "",
+                        makingCharges: "",
+                        paymentMethod: "",
+                        taxes: "",
+                        notes: "",
+                      });
+                    }}
                   >
-                    <option value="">Select Payment Method</option>
-                    <option value="Cash">Cash</option>
-                    <option value="Credit Card">Credit Card</option>
-                    <option value="Debit Card">Debit Card</option>
-                    <option value="UPI">UPI</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Cheque">Cheque</option>
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium flex items-center"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 mr-1"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Complete Sale
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="date"
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    value={sale.date}
-                    onChange={(e) => setSale({...sale, date: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-
-              {sale.orderType === "Partial Payment" && (
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Deposit Amount (₹) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="depositeAmount"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      value={sale.depositeAmount}
-                      onChange={(e) => setSale({...sale, depositeAmount: e.target.value})}
-                      required
-                      min="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Pending Amount (₹)
-                    </label>
-                    <input
-                      type="number"
-                      name="pendingAmount"
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-gray-100"
-                      value={sale.pendingAmount}
-                      readOnly
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Additional Notes
-                </label>
-                <textarea
-                  name="notes"
-                  rows="2"
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  value={sale.notes}
-                  onChange={(e) => setSale({...sale, notes: e.target.value})}
-                  placeholder="Any special instructions or remarks..."
-                ></textarea>
-              </div>
+              </form>
             </div>
           </div>
-
-          <div className="mt-6 flex justify-end gap-3 border-t pt-4">
-            <button
-              type="button"
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-              onClick={() => {
-                setShowSaleModal(false);
-                setSale({
-                  ...sale,
-                  isExistingCustomer: false,
-                  customerID: "",
-                  customerName: "",
-                  customerPhone: "",
-                  customerEmail: "",
-                  orderType: "Full Payment",
-                  depositeAmount: "",
-                  pendingAmount: "",
-                  date: new Date().toISOString().split('T')[0],
-                  discount: "",
-                  makingCharges: "",
-                  paymentMethod: "",
-                  taxes: "",
-                  notes: ""
-                });
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              Complete Sale
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-)}
-
+        </div>
+      )}
     </div>
   );
 };

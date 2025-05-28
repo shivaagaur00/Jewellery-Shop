@@ -1,32 +1,41 @@
 import "./App.css";
 import HomePage from "./components/HomePage";
 import Header from "./components/Header";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Footer from "./components/Footer";
 import OwnerLayout from "./components/OwnerLayout";
-import CustomerDetail  from "./components/CustomerDetail.js";
+import CustomerDetail from "./components/CustomerDetail.js";
+import { Provider } from 'react-redux';
+import { store } from './store/store';
+import ProtectedRoute from './components/ProtectedRoute';
+
 function App() {
   return (
-    <div className="">
-      <Router>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <>
-                <HomePage />
-              </>
-            }
-          />
-          <Route
-          path="/ownerLayout" 
-          element={
-            <OwnerLayout></OwnerLayout>
-          }/>
-          <Route path="/customer/:customerId" element={<CustomerDetail/>}/>
-        </Routes>
-      </Router>
-    </div>
+    <Provider store={store}>
+      <div className="">
+        <Router>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/ownerLayout"
+              element={
+                <ProtectedRoute>
+                  <OwnerLayout />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/customer/:customerId" 
+              element={
+                <ProtectedRoute>
+                  <CustomerDetail />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Router>
+      </div>
+    </Provider>
   );
 }
 
