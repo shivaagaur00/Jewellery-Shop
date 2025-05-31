@@ -15,7 +15,6 @@ export const ownerLogin = async (req, res) => {
     console.log(error);
   }
 };
-
 export const getItems = async (req, res) => {
   try {
     const owner = await Owner.findOne();
@@ -84,7 +83,6 @@ export const addItem = async (req, res) => {
         message: "Please provide all required fields",
       });
     }
-
     const owner = await Owner.findOne();
     if (!owner) {
       return res.status(404).json({
@@ -114,7 +112,6 @@ export const addItem = async (req, res) => {
     };
     owner.item.push(newItem);
     await owner.save();
-    console.log(newItem);
 
     res.status(201).json({
       status: 0,
@@ -266,6 +263,7 @@ export const addLoan = async (req, res) => {
   try {
     const { 
       customer,
+      customerID,
       itemType,
       itemDescription,
       loanAmount,
@@ -280,6 +278,7 @@ export const addLoan = async (req, res) => {
     } = req.body;
     if (
       !customer ||
+      !customerID ||
       !itemType ||
       !itemDescription||
       !loanAmount ||
@@ -295,6 +294,7 @@ export const addLoan = async (req, res) => {
     let owner = await Owner.findOne();
     const newLoan = {
       customer: customer,
+      customerID: customerID,
       itemType:itemType,
       itemDescription:itemDescription,
       loanAmount:loanAmount,
@@ -308,8 +308,9 @@ export const addLoan = async (req, res) => {
       collateralImages:collateralImages,
     };
     owner.loans.push(newLoan);
+    let cust=owner.consumers.find(c=>c.id===customerID);
+    cust.loan.push(newLoan);
     await owner.save();
-
     res.status(201).json({
       success: true,
       message: 'Loan added successfully',
@@ -333,12 +334,10 @@ export const updateLoan = async (req, res) => {
       return res.status(400).json({ message: 'Loan ID is required' });
     }
     const owner = await Owner.findOne();
-
     if (!owner) {
       return res.status(404).json({ message: 'Owner document not found' });
     }
     const loanIndex = owner.loans.findIndex(loan => loan._id.toString() === id);
-
     if (loanIndex === -1) {
       return res.status(404).json({ message: 'Loan not found' });
     }
@@ -376,7 +375,6 @@ export const updateLoan = async (req, res) => {
 
 // Delete loan
 export const deleteLoan = async (req, res) => {
-  console.log(req.body);
   try {
     const { loanId } = req.body;
     loanId
@@ -515,26 +513,51 @@ export const getCustomers = async (req, res) => {
     });
   }
 };
+export const deleteCustomer = async (req, res) => {
+  try {
+    const { id } = req.body;
+    let owner = await Owner.findOne();
+    if (!owner) {
+      return res.status(404).json({ message: "Owner not found" });
+    }
+    owner.consumers = owner.consumers.filter(c => c.id !== id);
+    await owner.save();
+    return res.status(200).json({ message: "Customer deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
-export const getSpecificCustomer =async(req,res)=>{
-  try{
-  console.log(0);
-  const {customerId}=req.body;
-console.log(1);
-  const owner=await Owner.findOne();
-  if(!owner){
-     return res.status(404).json({
+export const getSpecificCustomer = async (req, res) => {
+  try {
+    const { customerId } = req.body;
+
+    const owner = await Owner.findOne();
+    if (!owner) {
+      return res.status(404).json({
         status: 1,
         message: "Owner not found",
       });
     }
-    console.log(customerId);
-    let customer =await owner.consumers.find(consumer => consumer._id.toString() === customerId);
-    console.log(customer);
-    if(!customer) return res.status(201).json({message:"not found"});
-    return res.status(200).json({data:customer});
-  }
-  catch(err){
-    console.log(err);
+
+    // Find the customer from owner's consumers array
+    const customer = owner.consumers.find(x => x._id.toString() === customerId);
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+    const purchases = [];
+    for (const saleId of customer.sales) {
+      const sale = owner.sale.find(s => s._id.toString() === saleId.toString());
+      if (sale) purchases.push(sale);
+}
+    const customerData = {
+      ...(customer.toObject?.() || customer),
+      purchases,
+    };
+    return res.status(200).json({ data: customerData });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

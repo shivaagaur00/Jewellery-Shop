@@ -38,6 +38,7 @@ const Loan = () => {
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     customer: '',
+    customerID:'',
     itemType: 'Gold',
     itemDescription: '',
     weight: '',
@@ -222,6 +223,7 @@ const calculateAmountDue = (loan) => {
               setCurrentLoan(null);
               setFormData({
                 customer: '',
+                customerID:'',
                 itemType: 'Gold',
                 itemDescription: '',
                 weight: '',
@@ -299,7 +301,9 @@ const calculateAmountDue = (loan) => {
                 <th className="p-3 text-left">Loan ID</th>
                 <th className="p-3 text-left">Customer</th>
                 <th className="p-3 text-left">Collateral</th>
+                <th className="p-3 text-left">Item Description</th>
                 <th className="p-3 text-left">Weight</th>
+                
                 <th className="p-3 text-left">Loan Amount</th>
                 <th className="p-3 text-left">Amount Due</th>
                 <th className="p-3 text-left">Issued Date</th>
@@ -319,6 +323,12 @@ const calculateAmountDue = (loan) => {
                     <div className="flex items-center gap-2">
                       <CustomerIcon className="text-amber-700" />
                       {loan.customer}
+                    </div>
+                  </td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <CustomerIcon className="text-amber-700" />
+                      {loan.customerID}
                     </div>
                   </td>
                   <td className="p-3">
@@ -443,6 +453,18 @@ const calculateAmountDue = (loan) => {
                     value={formData.customer}
                     onChange={handleInputChange}
                     placeholder="Enter customer name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-amber-900 mb-1">Customer ID</label>
+                  <input
+                    type="text"
+                    name="customerID"
+                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                    value={formData.customerID}
+                    onChange={handleInputChange}
+                    placeholder="Enter customerID"
                     required
                   />
                 </div>

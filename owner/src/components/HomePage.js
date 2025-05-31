@@ -165,13 +165,8 @@ const HomePage = () => {
                       className="h-4 w-4 text-amber-500 focus:ring-amber-400 border-gray-600 rounded bg-gray-700"
                     />
                     <label htmlFor="remember-me" className="ml-2 block text-xs sm:text-sm text-gray-300">
-                      Remember me
+                      ID: shivagaur2503@gmail.com  Password: Password
                     </label>
-                  </div>
-                  <div className="text-xs sm:text-sm">
-                    <a href="#" className="font-medium text-amber-400 hover:text-amber-300">
-                      Forgot password?
-                    </a>
                   </div>
                 </div>
 

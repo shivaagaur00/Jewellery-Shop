@@ -1,10 +1,13 @@
 import axios from "axios";
 const URL="http://localhost:8000"
+
+// https://jewellery-shop-izh1.onrender.com
 export const login=async (data)=>{
     try{
+        console.log(0);
         // console.log("Yess Frontend Working Good");
         let res=await axios.post(`${URL}/ownerLogin`,data);
-        // console.log("Yess Reponse");
+        console.log(res);
         return res;
     }
     catch(error){
@@ -121,9 +124,9 @@ export const updateCustomer=async()=>{
         console.log(error);
     }
 }
-export const deleteCustomer=async()=>{
+export const deleteCustomer=async(data)=>{
     try {
-        let res=await axios.post(`${URL}/getCustomers`);
+        let res=await axios.post(`${URL}/deleteCustomer`,data);
         return res;
     } catch (error) {
         console.log(error);
@@ -144,5 +147,95 @@ export const addSale=async(data)=>{
         return res;
     } catch (error) {
         console.log(error);   
+    }
+}
+export const getTransactions=async()=>{
+    try {
+        let res=await axios.post(`${URL}/getTransactions`);
+
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const addTransactions=async(data)=>{
+    try {
+        let res=await axios.post(`${URL}/addTransaction`,data);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const editTransaction=async(data)=>{
+    try {
+        let res=await axios.post(`${URL}/editTransaction`,data);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const deleteTransaction=async(data)=>{
+    try {
+        console.log(data);
+        let res=await axios.post(`${URL}/deleteTransaction`,data);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+export const getInfo=async()=>{
+    try {
+        let res=await axios.post(`${URL}/getInfo`);
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const edit=async()=>{
+    try {
+        let res=await axios.post(`${URL}/editInfo`);
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const addOrder=async(data)=>{
+    try {
+        let res=await axios.post(`${URL}/addOrder`,data);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const editOrder=async(data)=>{
+    try {
+        let res=await axios.post(`${URL}/editOrder`,data);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const deleteOrder=async(data)=>{
+    try {
+        let res=await axios.post(`${URL}/deleteOrder`,data);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const getOrders=async()=>{
+    try {
+        let res=await axios.post(`${URL}/getOrders`);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+export const getOrder=async()=>{
+    try {
+        let res=await axios.post(`${URL}/getOrder`);
+
+        return res;
+    } catch (error) {
+        console.log(error);
     }
 }

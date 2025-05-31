@@ -18,9 +18,11 @@ const transactionInfo=new mongoose.Schema({
     },
     transactionAmount:{
         type:Number,
-        // required:true,
     },
     customerID:{
+        type:String,
+    },
+    customerName:{
         type:String,
     },
     date:{
@@ -67,9 +69,15 @@ const ordersInfo=new mongoose.Schema({
         type:String,
         required:true,
     },
-    paidAmount:{
+    depositedAmount:{
         type:Number,
         required:true,
+    },
+    sp:{
+        type:Number,
+    },
+    cp:{
+        type:Number
     },
     date:{
         type:String,
@@ -78,7 +86,21 @@ const ordersInfo=new mongoose.Schema({
     transactions:{
         type:[transactionInfo],
         required:true,
-    }   
+    },
+    weight:{
+        type:Number,
+    },
+    expectedDeliverDate:{
+        type:String,
+        required:true
+    },
+    deliverDate:{
+        type:String,
+    },
+    status:{
+        type:String,
+        required:true,
+    }
 });
 const purchaseInfo=new mongoose.Schema({
     cutomerId:{
@@ -155,6 +177,10 @@ const loansInfo= new mongoose.Schema({
         type:String,
         required:true,
     },
+    customerID:{
+        type:String,
+        required:true,
+    },
     itemType:{
         type:String,
         required:true,
@@ -200,7 +226,7 @@ const loansInfo= new mongoose.Schema({
     status:{
         type:String,
         required:true,
-        enum: ['Active', 'Completed', 'Defaulted'],
+        enum: ['Active', 'Completed', 'Defaulted','Pending'],
         default: 'Active'
     },
     collateralImages:{
@@ -275,7 +301,10 @@ const salesInfo=new mongoose.Schema({
     },
     taxes:{
         type:Number,
-    }      
+    },    
+    image:{
+        type:String,
+    }
 });
 const exchangeInfo=new mongoose.Schema({
     customerId:{
@@ -418,7 +447,109 @@ const consumerInfo=new mongoose.Schema({
         required: true,
     }
 });
+const infoSchema = mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  logo: {
+    type: String,
+    default: ''
+  },
+  description: {
+    type: String,
+    default: ''
+  },
+  currency: {
+    type: String,
+    enum: ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD'],
+    default: 'USD'
+  },
+  inventoryManagement: {
+    type: Boolean,
+    default: true
+  },
+  lowStockThreshold: {
+    type: Number,
+    min: 1,
+    default: 5
+  },
+  metalTypes: {
+    type: [String],
+    enum: ['Gold', 'Silver', 'Platinum', 'Palladium', 'Titanium', 'Stainless Steel'],
+    default: ['Gold', 'Platinum']
+  },
+  gemstoneTypes: {
+    type: [String],
+    enum: ['Diamond', 'Ruby', 'Sapphire', 'Emerald', 'Pearl', 'Opal', 'Topaz', 'Amethyst'],
+    default: ['Diamond', 'Sapphire']
+  },
+  categories: {
+    type: [String],
+    enum: ['Rings', 'Necklaces', 'Earrings', 'Bracelets', 'Watches', 'Pendants', 'Brooches', 'Anklets'],
+    default: ['Rings', 'Necklaces']
+  },
+  returnPolicy: {
+    type: String,
+    default: '30-day return policy for unused items with original packaging and certificate.'
+  },
+  shippingPolicy: {
+    type: String,
+    default: 'Free insured shipping on all orders over $500. International shipping available.'
+  },
+  warrantyInfo: {
+    type: String,
+    default: 'Lifetime warranty on craftsmanship. 1-year warranty on gemstone settings.'
+  },
+  notificationEmail: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address']
+  },
+  appoinmentBooking: {
+    type: Boolean,
+    default: true
+  },
+  customizationService: {
+    type: Boolean,
+    default: false
+  },
+  goldPurityOptions: {
+    type: [String],
+    enum: ['14K', '18K', '22K', '24K'],
+    default: ['14K', '18K', '22K', '24K']
+  },
+  selectedPurity: {
+    type: [String],
+    enum: ['14K', '18K', '22K', '24K'],
+    default: ['18K']
+  },
+  priceDisplay: {
+    type: String,
+    enum: ['with-tax', 'without-tax', 'both'],
+    default: 'with-tax'
+  },
+  taxRate: {
+    type: Number,
+    min: 0,
+    max: 30,
+    default: 7.5
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true
+});
 const ownerSchema=new mongoose.Schema({
+    information:[infoSchema],
     owners:[ownersInfo],
     item:[itemsInfo],
     sale:[salesInfo],

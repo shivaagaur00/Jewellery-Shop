@@ -3,10 +3,8 @@ import Owner from "../Models/Owner.js";
 export const addSale = async (req, res) => {
   try {
     const { data } = req.body;
-    // console.log(data);
     const owner = await Owner.findOne();
     if (!owner) return res.status(404).json({ message: "Owner not found" });
-
     const itemToBeUpdated = owner.item.find(i => i.ID === data.itemID);
     if (!itemToBeUpdated) {
       return res.status(400).json({ message: "Item not found" });
@@ -15,8 +13,6 @@ export const addSale = async (req, res) => {
       return res.status(400).json({ message: "Item Quantity is not sufficient" });
     }
     itemToBeUpdated.quantity -= 1;
-
-    // Create transaction data
     const transaction = {
       transactionMode: data.paymentMethod,
       transactionAmount: data.amountPayingNow,
@@ -32,13 +28,12 @@ export const addSale = async (req, res) => {
       customerName: data.customerName,
       customerPhone: data.customerPhone,
       customerEmail: data.customerEmail,
-      depositeAmount:data.depositeAmount,
       itemName: itemToBeUpdated.itemName,
       itemID: itemToBeUpdated.ID,
       weight: itemToBeUpdated.weight,
       itemPurity: itemToBeUpdated.itemPurity,
       metalPrice: itemToBeUpdated.metalPrice,
-      amountPayingNow: data.amountPayingNow,
+      depositeAmount: data.amountPayingNow,
       orderType: data.orderType,
       pendingAmount: data.pendingAmount,
       discount: data.discount,
@@ -52,10 +47,9 @@ export const addSale = async (req, res) => {
     };
     owner.transactions.push(transaction);
     owner.sale.push(saleData);
-    
     const latestSale = owner.sale[owner.sale.length - 1];
     if(data.isExistingCustomer && data.customerID) {
-      const customer = owner.consumers.id(data.customerID);
+      const customer = owner.consumers.find(c=> c.id==data.customerID);
       if (customer) {
         customer.transactions.push(transaction);
         customer.sales.push(latestSale._id);

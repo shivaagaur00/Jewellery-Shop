@@ -1,82 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-  Visibility as VisibilityIcon,
   Search as SearchIcon,
   Close as CloseIcon,
   Save as SaveIcon,
   FilterList as FilterListIcon,
   Clear as ClearIcon,
   Payment as PaymentIcon,
-//   AccountBalanceWallet as WalletIcon,
   CreditCard as CreditCardIcon,
   LocalAtm as CashIcon,
   CalendarToday as CalendarIcon
 } from '@mui/icons-material';
+import { addTransactions, deleteTransaction, editTransaction, getTransactions, getCustomers } from '../api/owners';
 
-// Dummy data for transactions
-const initialTransactions = [
-  {
-    id: 'TXN001',
-    transactionMode: 'credit-card',
-    transactionAmount: '25000',
-    customerID: 'CUST001',
-    customerName: 'John Doe',
-    date: '2023-05-15',
-    orderID: 'ORD001',
-    status: 'completed',
-    notes: 'Payment for gold ring order'
-  },
-  {
-    id: 'TXN002',
-    transactionMode: 'bank-transfer',
-    transactionAmount: '20000',
-    customerID: 'CUST002',
-    customerName: 'Jane Smith',
-    date: '2023-06-20',
-    orderID: 'ORD002',
-    status: 'completed',
-    notes: 'Final payment for silver bracelet'
-  },
-  {
-    id: 'TXN003',
-    transactionMode: 'cash',
-    transactionAmount: '15000',
-    customerID: 'CUST003',
-    customerName: 'Robert Johnson',
-    date: '2023-07-10',
-    orderID: 'ORD003',
-    status: 'pending',
-    notes: 'Advance payment for platinum necklace'
-  }
-];
-
-// Dummy customers and orders for dropdowns
-const dummyCustomers = [
-  { id: 'CUST001', name: 'John Doe' },
-  { id: 'CUST002', name: 'Jane Smith' },
-  { id: 'CUST003', name: 'Robert Johnson' }
-];
-
-const dummyOrders = [
-  { id: 'ORD001', customerID: 'CUST001', itemName: 'Gold Ring' },
-  { id: 'ORD002', customerID: 'CUST002', itemName: 'Silver Bracelet' },
-  { id: 'ORD003', customerID: 'CUST003', itemName: 'Platinum Necklace' }
-];
-
-const TransactionModal = ({ isOpen, onClose, onSubmit, transaction, isEdit }) => {
+const TransactionModal = ({ isOpen, onClose, onSubmit, transaction, isEdit, customers }) => {
   const [formData, setFormData] = useState({
-    id: transaction?.id || `TXN${Math.floor(1000 + Math.random() * 9000)}`,
     transactionMode: transaction?.transactionMode || 'credit-card',
     transactionAmount: transaction?.transactionAmount || '',
     customerID: transaction?.customerID || '',
     customerName: transaction?.customerName || '',
     date: transaction?.date || new Date().toISOString().split('T')[0],
-    orderID: transaction?.orderID || '',
     status: transaction?.status || 'pending',
-    notes: transaction?.notes || ''
+    description: transaction?.description || '',
+    hasCustomerID: transaction?.customerID ? true : false
   });
 
   const [error, setError] = useState('');
@@ -90,35 +38,65 @@ const TransactionModal = ({ isOpen, onClose, onSubmit, transaction, isEdit }) =>
 
   const statusOptions = ['pending', 'completed', 'failed', 'refunded'];
 
+  useEffect(() => {
+    if (transaction) {
+      setFormData({
+        transactionMode: transaction.transactionMode || 'credit-card',
+        transactionAmount: transaction.transactionAmount || '',
+        customerID: transaction.customerID || '',
+        customerName: transaction.customerName || '',
+        date: transaction.date || new Date().toISOString().split('T')[0],
+        status: transaction.status || 'pending',
+        description: transaction.description || '',
+        hasCustomerID: transaction.customerID ? true : false
+      });
+    } else {
+      setFormData({
+        transactionMode: 'credit-card',
+        transactionAmount: '',
+        customerID: '',
+        customerName: '',
+        date: new Date().toISOString().split('T')[0],
+        status: 'pending',
+        description: '',
+        hasCustomerID: false
+      });
+    }
+  }, [transaction]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value
     });
+  };
 
-    // Auto-set customer name when ID is selected
-    if (name === 'customerID') {
-      const customer = dummyCustomers.find(c => c.id === value);
-      if (customer) {
-        setFormData(prev => ({
-          ...prev,
-          customerName: customer.name
-        }));
-      }
-    }
+  const handleCustomerToggle = (hasID) => {
+    setFormData({
+      ...formData,
+      hasCustomerID: hasID,
+      customerID: hasID ? '' : null,
+      customerName: ''
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.transactionAmount || !formData.customerID) {
+    if (!formData.transactionAmount || !formData.customerName) {
       setError('Please fill all required fields');
       return;
     }
 
-    onSubmit(formData);
+    // Prepare the data to submit
+    const submitData = {
+      ...formData,
+      customerID: formData.hasCustomerID ? formData.customerID : null
+    };
+
+    onSubmit(submitData);
     setError('');
   };
 
@@ -140,34 +118,62 @@ const TransactionModal = ({ isOpen, onClose, onSubmit, transaction, isEdit }) =>
             {error && <div className="text-red-500 p-2 bg-red-50 rounded-md">{error}</div>}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Transaction ID</label>
-                <input
-                  type="text"
-                  name="id"
-                  value={formData.id}
-                  onChange={handleInputChange}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Customer <span className="text-red-500">*</span></label>
-                <select
-                  name="customerID"
-                  value={formData.customerID}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
-                >
-                  <option value="">Select Customer</option>
-                  {dummyCustomers.map(customer => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} ({customer.id})
-                    </option>
-                  ))}
-                </select>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Customer Identification</label>
+                <div className="flex gap-4 mb-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="hasCustomerID"
+                      checked={!formData.hasCustomerID}
+                      onChange={() => handleCustomerToggle(false)}
+                      className="h-4 w-4 text-amber-600 focus:ring-amber-500"
+                    />
+                    <span className="ml-2 text-gray-700">New Customer (No ID)</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="hasCustomerID"
+                      checked={formData.hasCustomerID}
+                      onChange={() => handleCustomerToggle(true)}
+                      className="h-4 w-4 text-amber-600 focus:ring-amber-500"
+                    />
+                    <span className="ml-2 text-gray-700">Existing Customer (With ID)</span>
+                  </label>
+                </div>
+                
+                {formData.hasCustomerID ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer <span className="text-red-500">*</span></label>
+                    <select
+                      name="customerID"
+                      value={formData.customerID}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
+                    >
+                      <option value="">Select Customer</option>
+                      {customers.map(customer => (
+                        <option key={customer._id} value={customer._id}>
+                          {customer.name} ({customer.phone})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      name="customerName"
+                      value={formData.customerName}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
+                    />
+                  </div>
+                )}
               </div>
               
               <div>
@@ -215,25 +221,6 @@ const TransactionModal = ({ isOpen, onClose, onSubmit, transaction, isEdit }) =>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Related Order</label>
-                <select
-                  name="orderID"
-                  value={formData.orderID}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
-                >
-                  <option value="">Select Order (Optional)</option>
-                  {dummyOrders
-                    .filter(order => order.customerID === formData.customerID)
-                    .map(order => (
-                      <option key={order.id} value={order.id}>
-                        {order.id} - {order.itemName}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
                   name="status"
@@ -264,10 +251,10 @@ const TransactionModal = ({ isOpen, onClose, onSubmit, transaction, isEdit }) =>
               </div>
               
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea
-                  name="notes"
-                  value={formData.notes}
+                  name="description"
+                  value={formData.description}
                   onChange={handleInputChange}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
@@ -298,7 +285,8 @@ const TransactionModal = ({ isOpen, onClose, onSubmit, transaction, isEdit }) =>
 };
 
 const Transactions = () => {
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const [transactions, setTransactions] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -307,12 +295,33 @@ const Transactions = () => {
   const [methodFilter, setMethodFilter] = useState('all');
   const [currentTransaction, setCurrentTransaction] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [transactionsRes, customersRes] = await Promise.all([
+          getTransactions(),
+          getCustomers()
+        ]);
+        
+        setTransactions(transactionsRes.data.data || []);
+        setCustomers(customersRes.data.data || []);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [transactions]);
 
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = 
-      transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+      (transaction.customerID && transaction.customerID.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      transaction.description?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || transaction.status === statusFilter;
     const matchesMethod = methodFilter === 'all' || transaction.transactionMode === methodFilter;
@@ -328,29 +337,42 @@ const Transactions = () => {
     }
   });
 
-  const handleAddTransaction = (newTransaction) => {
-    setTransactions([...transactions, newTransaction]);
-    setShowAddModal(false);
-  };
-
-  const handleUpdateTransaction = (updatedTransaction) => {
-    setTransactions(transactions.map(txn => 
-      txn.id === updatedTransaction.id ? updatedTransaction : txn
-    ));
-    setShowAddModal(false);
-    setCurrentTransaction(null);
-  };
-
-  const handleDeleteTransaction = (id) => {
-    if (window.confirm('Are you sure you want to delete this transaction?')) {
-      setTransactions(transactions.filter(txn => txn.id !== id));
+  const handleAddTransaction = async (newTransaction) => {
+    try {
+      const res = await addTransactions(newTransaction);
+      // setTransactions([...transactions, res.data.data]);
+      setShowAddModal(false);
+    } catch (error) {
+      console.error("Error adding transaction:", error);
     }
   };
 
-  const handleEditTransaction = (transaction) => {
-    setCurrentTransaction(transaction);
-    setIsEdit(true);
-    setShowAddModal(true);
+  const handleUpdateTransaction = async (updatedTransaction) => {
+    try {
+      const res = await editTransaction({
+        id: currentTransaction._id,
+        ...updatedTransaction
+      });
+      // setTransactions(transactions.map(txn => 
+      //   txn._id === res.data.data._id ? res.data.data : txn
+      // ));
+      setShowAddModal(false);
+      setCurrentTransaction(null);
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+    }
+  };
+
+  const handleDeleteTransaction = async (id) => {
+    if (window.confirm('Are you sure you want to delete this transaction?')) {
+      try {
+        console.log(id);
+        await deleteTransaction({id:id});
+        setTransactions(transactions.filter(txn => txn._id !== id));
+      } catch (error) {
+        console.error("Error deleting transaction:", error);
+      }
+    }
   };
 
   const resetFilters = () => {
@@ -388,6 +410,14 @@ const Transactions = () => {
       default: return method;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -498,6 +528,7 @@ const Transactions = () => {
         onSubmit={isEdit ? handleUpdateTransaction : handleAddTransaction}
         transaction={currentTransaction}
         isEdit={isEdit}
+        customers={customers}
       />
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-amber-100">
@@ -505,20 +536,19 @@ const Transactions = () => {
           <table className="min-w-full divide-y divide-amber-200">
             <thead className="bg-amber-600">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Txn ID</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Customer</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Amount</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Method</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Date</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Order</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Description</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-amber-100">
               {sortedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center">
+                  <td colSpan="7" className="px-6 py-8 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <SearchIcon className="text-amber-400 text-4xl mb-2" />
                       <p className="text-gray-500 text-lg">No transactions found</p>
@@ -528,13 +558,12 @@ const Transactions = () => {
                 </tr>
               ) : (
                 sortedTransactions.map(transaction => (
-                  <tr key={transaction.id} className="hover:bg-amber-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-amber-600">
-                      {transaction.id}
-                    </td>
+                  <tr key={transaction._id} className="hover:bg-amber-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{transaction.customerName}</div>
-                      <div className="text-xs text-gray-500">{transaction.customerID}</div>
+                      {transaction.customerID && (
+                        <div className="text-xs text-gray-500">{transaction.customerID}</div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       ₹{parseFloat(transaction.transactionAmount).toLocaleString('en-IN')}
@@ -555,24 +584,24 @@ const Transactions = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(transaction.date).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {transaction.orderID ? (
-                        <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs">
-                          {transaction.orderID}
-                        </span>
-                      ) : '-'}
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {transaction.description || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleEditTransaction(transaction)}
+                          onClick={() => {
+                            setCurrentTransaction(transaction);
+                            setIsEdit(true);
+                            setShowAddModal(true);
+                          }}
                           className="text-amber-600 hover:text-amber-900 p-1 rounded hover:bg-amber-100"
                           title="Edit"
                         >
                           <EditIcon fontSize="small" />
                         </button>
                         <button
-                          onClick={() => handleDeleteTransaction(transaction.id)}
+                          onClick={() => handleDeleteTransaction(transaction._id)}
                           className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100"
                           title="Delete"
                         >

@@ -1,6 +1,8 @@
 import { Router } from "express";
-import { addCustomer, addItem, addLoan, deleteItem, deleteLoan, getCustomers, getItems, getLoans, getSpecificCustomer, ownerLogin, updateItem, updateLoan } from "../controllers/authController.js";
+import { addCustomer, addItem, addLoan, deleteCustomer, deleteItem, deleteLoan, getCustomers, getItems, getLoans, getSpecificCustomer, ownerLogin, updateItem, updateLoan } from "../controllers/authController.js";
 import { addSale } from "../controllers/salesControllers.js";
+import { addTransaction, deleteTransaction, editTransaction, getTransactions } from "../controllers/transactions.js";
+import { addOrder, deleteOrder, editOrder, getOrder, getOrders } from "../controllers/orderController.js";
 const ownerRouter=Router();
 ownerRouter.post("/ownerLogin",ownerLogin);
 ownerRouter.post("/getItems",getItems);
@@ -11,8 +13,19 @@ ownerRouter.post("/addItem",addItem);
 ownerRouter.post("/updateLoan",updateLoan);
 ownerRouter.post("/deleteLoan",deleteLoan);
 ownerRouter.post("/addLoan",addLoan);
-ownerRouter.post("/addCustomer",addCustomer)
+ownerRouter.post("/addCustomer",addCustomer);
+ownerRouter.post("/deleteCustomer",deleteCustomer);
 ownerRouter.post("/getCustomers",getCustomers);
 ownerRouter.post("/getSpecificCustomer",getSpecificCustomer);
 ownerRouter.post("/addSale",addSale);
+ownerRouter.post("/getTransactions",getTransactions);
+ownerRouter.post("/addTransaction",addTransaction);
+ownerRouter.post("/editTransaction",editTransaction);
+ownerRouter.post("/deleteTransaction",deleteTransaction);
+ownerRouter.post("/addOrder",addOrder);
+ownerRouter.post("/editOrder",editOrder);
+ownerRouter.post("/deleteOrder",deleteOrder);
+ownerRouter.post("/getOrder",getOrder);
+ownerRouter.post("/getOrders",getOrders);
+
 export default ownerRouter;

@@ -86,14 +86,8 @@ const OwnerLogin = () => {
                   className='h-4 w-4 text-amber-500 focus:ring-amber-400 border-white/10 rounded bg-white/5'
                 />
                 <label htmlFor='remember-me' className='ml-2 block text-sm text-white/70'>
-                  Remember me
+                  ID: shivagaur2503@gmail.com Password: Password
                 </label>
-              </div>
-
-              <div className='text-sm'>
-                <Link to="/forgot-password" className='font-medium text-amber-400 hover:text-amber-300'>
-                  Forgot password?
-                </Link>
               </div>
             </div>
 

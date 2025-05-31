@@ -1,104 +1,112 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
-  Visibility as VisibilityIcon,
   Search as SearchIcon,
   Close as CloseIcon,
   Save as SaveIcon,
   FilterList as FilterListIcon,
+  CloudUpload as CloudUploadIcon,
   Clear as ClearIcon,
   AttachMoney as AttachMoneyIcon,
   DateRange as DateRangeIcon
 } from '@mui/icons-material';
+import { addOrder, deleteOrder, editOrder, getOrder, getOrders } from '../api/owners';
+import axios from 'axios';
 
-// Dummy data for orders
-const initialOrders = [
-  {
-    id: 'ORD001',
-    customerID: 'CUST001',
-    customerName: 'John Doe',
-    metalType: 'gold',
-    itemName: 'Gold Ring',
-    orderDescription: 'Wedding ring with diamond',
-    weightExpected: '10',
-    itemPurity: '22k',
-    metalPrice: '5000',
-    priceExpected: '50000',
-    paidAmount: 25000,
-    date: '2023-05-15',
-    status: 'pending'
-  },
-  {
-    id: 'ORD002',
-    customerID: 'CUST002',
-    customerName: 'Jane Smith',
-    metalType: 'silver',
-    itemName: 'Silver Bracelet',
-    orderDescription: 'Custom engraved bracelet',
-    weightExpected: '25',
-    itemPurity: '925',
-    metalPrice: '800',
-    priceExpected: '20000',
-    paidAmount: 20000,
-    date: '2023-06-20',
-    status: 'completed'
-  },
-  {
-    id: 'ORD003',
-    customerID: 'CUST003',
-    customerName: 'Robert Johnson',
-    metalType: 'platinum',
-    itemName: 'Platinum Necklace',
-    orderDescription: 'Design #1234 with pendant',
-    weightExpected: '15',
-    itemPurity: '950',
-    metalPrice: '3000',
-    priceExpected: '45000',
-    paidAmount: 15000,
-    date: '2023-07-10',
-    status: 'in-progress'
-  }
-];
-
-// Dummy customers for dropdown
-const dummyCustomers = [
-  { id: 'CUST001', name: 'John Doe' },
-  { id: 'CUST002', name: 'Jane Smith' },
-  { id: 'CUST003', name: 'Robert Johnson' },
-  { id: 'CUST004', name: 'Alice Brown' },
-  { id: 'CUST005', name: 'Michael Wilson' }
-];
-
-const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
+const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit, customers }) => {
   const [formData, setFormData] = useState({
-    id: order?.id || `ORD${Math.floor(1000 + Math.random() * 9000)}`,
     customerID: order?.customerID || '',
+    transactionMode:order?.transactionMode || 0,
     customerName: order?.customerName || '',
-    metalType: order?.metalType || 'gold',
+    metalType: order?.metalType || 'Gold',
     itemName: order?.itemName || '',
     orderDescription: order?.orderDescription || '',
     weightExpected: order?.weightExpected || '',
-    itemPurity: order?.itemPurity || '22k',
+    itemPurity: order?.itemPurity || '18K',
     metalPrice: order?.metalPrice || '',
     priceExpected: order?.priceExpected || '',
-    paidAmount: order?.paidAmount || 0,
+    depositedAmount: order?.depositedAmount || 0,
     date: order?.date || new Date().toISOString().split('T')[0],
-    status: order?.status || 'pending'
+    expectedDeliverDate: order?.expectedDeliverDate || '',
+    status: order?.status || 'pending',
+    sp: order?.sp || 0,
+    cp: order?.cp || 0,
+    weight: order?.weight || 0,
+    deliverDate: order?.deliverDate || '',
+    image:order?.image || "",
   });
-
+useEffect(() => {
+  if (order) {
+    setFormData({
+      customerID: order.customerID || '',
+      transactionMode: order.transactionMode || 0,
+      customerName: order.customerName || '',
+      metalType: order.metalType || 'Gold',
+      itemName: order.itemName || '',
+      orderDescription: order.orderDescription || '',
+      weightExpected: order.weightExpected || '',
+      itemPurity: order.itemPurity || '18K',
+      metalPrice: order.metalPrice || '',
+      priceExpected: order.priceExpected || '',
+      depositedAmount: order.depositedAmount || 0,
+      date: order.date || new Date().toISOString().split('T')[0],
+      expectedDeliverDate: order.expectedDeliverDate || '',
+      status: order.status || 'pending',
+      sp: order.sp || 0,
+      cp: order.cp || 0,
+      weight: order.weight || 0,
+      deliverDate: order.deliverDate || '',
+      image: order.image || ""
+    });
+  } else {
+    setFormData({
+      customerID: '',
+      transactionMode: 0,
+      customerName: '',
+      metalType: 'Gold',
+      itemName: '',
+      orderDescription: '',
+      weightExpected: '',
+      itemPurity: '18K',
+      metalPrice: '',
+      priceExpected: '',
+      depositedAmount: 0,
+      date: new Date().toISOString().split('T')[0],
+      expectedDeliverDate: '',
+      status: 'pending',
+      sp: 0,
+      cp: 0,
+      weight: 0,
+      deliverDate: '',
+      image: ""
+    });
+  }
+}, [order, isOpen]); 
   const [error, setError] = useState('');
 
-  const metalTypes = ['gold', 'silver', 'platinum', 'diamond'];
+  const metalTypes = ['Gold', 'Silver', 'Platinum', 'Palladium', 'Titanium', 'Stainless Steel'];
   const purityOptions = {
-    gold: ['24k', '22k', '18k', '14k'],
-    silver: ['999', '925', '900'],
-    platinum: ['950', '900'],
-    diamond: ['D', 'E', 'F', 'G', 'H']
+    Gold: ['24K', '22K', '18K', '14K'],
+    Silver: ['999', '925', '900'],
+    Platinum: ['950', '900'],
+    Palladium: ['950', '900'],
+    'Stainless Steel': ['304', '316'],
+    Titanium: ['Grade 1', 'Grade 2', 'Grade 5']
   };
 
   const statusOptions = ['pending', 'in-progress', 'completed', 'cancelled'];
+
+  useEffect(() => {
+    if (formData.metalPrice && formData.weightExpected) {
+      const calculatedPrice = parseFloat(formData.metalPrice) * parseFloat(formData.weightExpected);
+      setFormData(prev => ({
+        ...prev,
+        priceExpected: calculatedPrice.toFixed(2)
+      }));
+    }
+  }, [formData.metalPrice, formData.weightExpected]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -107,9 +115,8 @@ const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
       [name]: value
     });
 
-    // Auto-set customer name when ID is selected
     if (name === 'customerID') {
-      const customer = dummyCustomers.find(c => c.id === value);
+      const customer = customers.find(c => c.id === value);
       if (customer) {
         setFormData(prev => ({
           ...prev,
@@ -117,28 +124,47 @@ const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
         }));
       }
     }
-
-    // Recalculate price if metalPrice or weight changes
-    if ((name === 'metalPrice' || name === 'weightExpected') && formData.metalPrice && formData.weightExpected) {
-      const calculatedPrice = parseFloat(formData.metalPrice) * parseFloat(formData.weightExpected);
-      setFormData(prev => ({
-        ...prev,
-        priceExpected: calculatedPrice.toFixed(2)
-      }));
-    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate required fields
     if (!formData.customerID || !formData.itemName || !formData.weightExpected) {
       setError('Please fill all required fields');
       return;
     }
-
-    onSubmit(formData);
-    setError('');
+    try {
+      await onSubmit(formData);
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Failed to process order');
+    }
+  };
+  const[isUploading,setIsUploading]=useState(false);
+  const handleImageUpload = async (files) => {
+    if (!files.length) return;
+    
+    try {
+      setIsUploading(true);
+      setError('');
+      const cloudinaryFormData = new FormData();
+      cloudinaryFormData.append("file", files[0]);
+      cloudinaryFormData.append("upload_preset", "ml_default");
+      
+      const response = await axios.post(
+        "https://api.cloudinary.com/v1_1/dthriaot4/image/upload",
+        cloudinaryFormData
+      );
+      
+      setFormData(prev => ({
+        ...prev,
+        image: response.data.secure_url
+      }));
+    } catch (err) {
+      setError("Failed to upload image");
+      console.error(err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -160,31 +186,16 @@ const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Order ID</label>
-                <input
-                  type="text"
-                  name="id"
-                  value={formData.id}
-                  onChange={handleInputChange}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                />
-              </div>
-              
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Customer <span className="text-red-500">*</span></label>
-                <select
+                <input
                   name="customerID"
                   value={formData.customerID}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder='Enter CustomerID'
                 >
-                  <option value="">Select Customer</option>
-                  {dummyCustomers.map(customer => (
-                    <option key={customer.id} value={customer.id}>{customer.name} ({customer.id})</option>
-                  ))}
-                </select>
+                  </input>
               </div>
               
               <div>
@@ -197,7 +208,7 @@ const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 >
                   {metalTypes.map(type => (
-                    <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
+                    <option key={type} value={type}>{type}</option>
                   ))}
                 </select>
               </div>
@@ -251,7 +262,6 @@ const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Metal Price (per gram) <span className="text-red-500">*</span></label>
                 <input
@@ -273,13 +283,13 @@ const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Deposited Amount</label>
                 <div className="relative">
                   <span className="absolute left-3 top-2 text-gray-400">$</span>
                   <input
                     type="number"
-                    name="paidAmount"
-                    value={formData.paidAmount}
+                    name="depositedAmount"
+                    value={formData.depositedAmount}
                     onChange={handleInputChange}
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md"
                   />
@@ -301,6 +311,49 @@ const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
               </div>
               
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery Date</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-400"><DateRangeIcon fontSize="small" /></span>
+                  <input
+                    type="date"
+                    name="expectedDeliverDate"
+                    value={formData.expectedDeliverDate}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+              
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Profile Image</label>
+                            {formData.image && (
+                              <div className="mb-2">
+                                <img 
+                                  src={formData.image} 
+                                  alt="Preview" 
+                                  className="h-20 w-20 object-cover rounded-full border-2 border-amber-200"
+                                />
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <label htmlFor="image-upload" className="cursor-pointer bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-md flex items-center gap-2 transition-colors duration-200">
+                                <CloudUploadIcon fontSize="small" />
+                                Upload Image
+                                <input
+                                  id="image-upload"
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleImageUpload(e.target.files)}
+                                  disabled={isUploading}
+                                />
+                              </label>
+                              {isUploading && <span className="text-sm text-gray-500">Uploading...</span>}
+                            </div>
+                            {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+                          </div>
+              
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
                   name="status"
@@ -314,6 +367,63 @@ const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (SP)</label>
+                <input
+                  type="number"
+                  name="sp"
+                  value={formData.sp}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cost Price (CP)</label>
+                <input
+                  type="number"
+                  name="cp"
+                  value={formData.cp}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Actual Weight (g)</label>
+                <input
+                  type="number"
+                  name="weight"
+                  value={formData.weight}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">transactionMode</label>
+                <input
+                  type="text"
+                  name="transactionMode"
+                  value={formData.transactionMode}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Date</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-400"><DateRangeIcon fontSize="small" /></span>
+                  <input
+                    type="date"
+                    name="deliverDate"
+                    value={formData.deliverDate}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -340,7 +450,8 @@ const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit }) => {
 };
 
 const Orders = () => {
-  const [orders, setOrders] = useState(initialOrders);
+  const [orders, setOrders] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -349,18 +460,56 @@ const Orders = () => {
   const [metalFilter, setMetalFilter] = useState('all');
   const [currentOrder, setCurrentOrder] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.itemName.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesMetal = metalFilter === 'all' || order.metalType === metalFilter;
-    
-    return matchesSearch && matchesStatus && matchesMetal;
-  });
+  useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await getOrders();
+      const data = response.data?.data || [];
+      setOrders(data);
+      const uniqueCustomers = [];
+      const customerMap = new Map();
+
+      data.forEach(order => {
+        if (order.customerID && !customerMap.has(order.customerID)) {
+          customerMap.set(order.customerID, true);
+          uniqueCustomers.push({
+            id: order.customerID,
+            name: order.customerName || `Customer ${order.customerID}`
+          });
+        }
+      });
+
+      setCustomers(uniqueCustomers);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, []);
+const filteredOrders = orders.filter(order => {
+  if (!order) return false;
+  const idStr = order._id?.toString()?.toLowerCase() || '';
+  const nameStr = order.customerName?.toLowerCase() || '';
+  const itemStr = order.itemName?.toLowerCase() || '';
+
+  const matchesSearch =
+    idStr.includes(searchTerm.toLowerCase()) ||
+    nameStr.includes(searchTerm.toLowerCase()) ||
+    itemStr.includes(searchTerm.toLowerCase());
+
+  const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+  const matchesMetal = metalFilter === 'all' || order.metalType === metalFilter;
+
+  return matchesSearch && matchesStatus && matchesMetal;
+});
+
 
   const sortedOrders = [...filteredOrders].sort((a, b) => {
     if (sortOption === 'newest') {
@@ -370,29 +519,41 @@ const Orders = () => {
     }
   });
 
-  const handleAddOrder = (newOrder) => {
-    setOrders([...orders, newOrder]);
-    setShowAddModal(false);
-  };
-
-  const handleUpdateOrder = (updatedOrder) => {
-    setOrders(orders.map(order => 
-      order.id === updatedOrder.id ? updatedOrder : order
-    ));
-    setShowAddModal(false);
-    setCurrentOrder(null);
-  };
-
-  const handleDeleteOrder = (id) => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
-      setOrders(orders.filter(order => order.id !== id));
+  const handleAddOrder = async (newOrder) => {
+    try {
+      const response = await addOrder({ data: newOrder });
+      setOrders([...orders, response.data.data]);
+      setShowAddModal(false);
+    } catch (err) {
+      setError(err.message || 'Failed to add order');
     }
   };
 
-  const handleEditOrder = (order) => {
-    setCurrentOrder(order);
-    setIsEdit(true);
-    setShowAddModal(true);
+  const handleUpdateOrder = async (updatedOrder) => {
+    try {
+      const response = await editOrder({ 
+        data: updatedOrder, 
+        orderId: currentOrder._id, 
+      });
+      setOrders(orders.map(order => 
+        order._id.toString() === currentOrder._id.toString() ? {...updatedOrder,_id:currentOrder._id} : order
+      ));
+      setShowAddModal(false);
+      setCurrentOrder(null);
+    } catch (err) {
+      setError(err.message || 'Failed to update order');
+    }
+  };
+
+  const handleDeleteOrder = async (id) => {
+    if (window.confirm('Are you sure you want to delete this order?')) {
+      try {
+        await deleteOrder({ orderId: id });
+        setOrders(orders.filter(order => order._id.toString() !== id));
+      } catch (err) {
+        setError(err.message || 'Failed to delete order');
+      }
+    }
   };
 
   const resetFilters = () => {
@@ -410,6 +571,22 @@ const Orders = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-red-500 text-lg">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -497,10 +674,10 @@ const Orders = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="all">All Metals</option>
-                <option value="gold">Gold</option>
-                <option value="silver">Silver</option>
-                <option value="platinum">Platinum</option>
-                <option value="diamond">Diamond</option>
+                <option value="Gold">Gold</option>
+                <option value="Silver">Silver</option>
+                <option value="Platinum">Platinum</option>
+                <option value="Palladium">Palladium</option>
               </select>
             </div>
           </div>
@@ -516,6 +693,7 @@ const Orders = () => {
         onSubmit={isEdit ? handleUpdateOrder : handleAddOrder}
         order={currentOrder}
         isEdit={isEdit}
+        customers={customers}
       />
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
@@ -547,9 +725,9 @@ const Orders = () => {
                 </tr>
               ) : (
                 sortedOrders.map(order => (
-                  <tr key={order.id} className="hover:bg-blue-50">
+                  <tr key={order._id.toString()} className="hover:bg-blue-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                      {order.id}
+                      {order._id.substring(order._id.length - 6)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
@@ -567,7 +745,7 @@ const Orders = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="font-medium">${order.priceExpected}</div>
-                      <div className="text-xs">Paid: ${order.paidAmount}</div>
+                      <div className="text-xs">Paid: ${order.depositedAmount}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
@@ -580,14 +758,19 @@ const Orders = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleEditOrder(order)}
+                          onClick={() => {
+                            setIsEdit(true);
+                            setCurrentOrder(order);
+                            setShowAddModal(true);
+                          }
+                          }
                           className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100"
                           title="Edit"
                         >
                           <EditIcon fontSize="small" />
                         </button>
                         <button
-                          onClick={() => handleDeleteOrder(order.id)}
+                          onClick={() => handleDeleteOrder(order._id.toString())}
                           className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100"
                           title="Delete"
                         >

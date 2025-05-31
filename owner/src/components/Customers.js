@@ -306,7 +306,7 @@ const formatDate=(isoString)=>{
   const handleDeleteCustomer = async (id) => {
     if (window.confirm('Are you sure you want to delete this customer?')) {
       try {
-        await deleteCustomer(id); // Assuming you have a deleteCustomer API function
+        await deleteCustomer({id:id}); 
         setCustomers(prev => prev.filter(customer => customer.id !== id));
       } catch (error) {
         console.error("Failed to delete customer:", error);
