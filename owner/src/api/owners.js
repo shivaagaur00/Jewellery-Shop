@@ -1,7 +1,7 @@
 import axios from "axios";
-const URL="http://localhost:8000"
+// const URL="http://localhost:8000"
 
-// https://jewellery-shop-izh1.onrender.com
+const URL="https://jewellery-shop-izh1.onrender.com"
 export const login=async (data)=>{
     try{
         console.log(0);

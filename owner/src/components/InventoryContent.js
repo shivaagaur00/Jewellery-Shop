@@ -458,8 +458,6 @@ const filteredInventory = inventory.filter((item) => {
         />
       </div>
     </div>
-
-    {/* Purity Filter */}
     <div className="bg-gray-50 p-4 rounded-lg">
       <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
         <DiamondIcon className="mr-2 text-yellow-600" fontSize="small" />
