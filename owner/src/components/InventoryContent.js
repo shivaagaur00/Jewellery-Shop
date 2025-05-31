@@ -11,6 +11,13 @@ import {
   Category as CategoryIcon,
   Close as CloseIcon,
 } from "@mui/icons-material";
+import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
+import StraightIcon from '@mui/icons-material/Straight'; 
+import BalanceIcon from '@mui/icons-material/Balance';
+import DiamondIcon from '@mui/icons-material/Diamond';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+
+import FilterListAltIcon from '@mui/icons-material/FilterListAlt';
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";
 import {
   addItem,
@@ -24,6 +31,7 @@ const InventoryContent = () => {
   const [inventory, setInventory] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [showFilters,setShowFilters]=useState(false);
   const [showForm, setShowForm] = useState(false);
   const [currentItem, setCurrentItem] = useState(null);
   const [error, setError] = useState("");
@@ -269,46 +277,66 @@ const InventoryContent = () => {
     setCurrentItem(null);
     setError("");
   };
+const [filters, setFilters] = useState({
+  minPrice: '',
+  maxPrice: '',
+  minWeight: '',
+  maxWeight: '',
+  purity: '',
+  category: '',
+  metalType: '',
+});
+const filteredInventory = inventory.filter((item) => {
+  const searchTermLower = searchTerm.toLowerCase();
+   const matchesSearch = 
+    item.itemName.toLowerCase().includes(searchTermLower) ||
+    item.category.toLowerCase().includes(searchTermLower) ||
+    item.ID.toLowerCase().includes(searchTermLower) ||
+    item.metalType?.toLowerCase().includes(searchTermLower) ||
+    item.itemPurity.toLowerCase().includes(searchTermLower) ||
+    item.tags?.some(tag => tag.toLowerCase().includes(searchTermLower)) ||
+    item.metalPrice.toString().includes(searchTerm);
 
-  const filteredInventory = inventory.filter((item) => {
-    const matchesSearch =
-      item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchTerm.toLowerCase());
+  const matchesFilters = 
+    (!filters.minPrice || item.metalPrice >= Number(filters.minPrice)) &&
+    (!filters.maxPrice || item.metalPrice <= Number(filters.maxPrice)) &&
+    (!filters.minWeight || item.weight >= Number(filters.minWeight)) &&
+    (!filters.maxWeight || item.weight <= Number(filters.maxWeight)) &&
+    (!filters.purity || item.itemPurity === filters.purity) &&
+    (!filters.category || item.category === filters.category) &&
+    (!filters.metalType || item.metalType?.toLowerCase() === filters.metalType.toLowerCase());
 
-    const stockStatus = getStockStatus(item.quantity);
+  const stockStatus = getStockStatus(item.quantity);
 
-    if (activeTab === "all") return matchesSearch;
-    if (activeTab === "low")
-      return matchesSearch && stockStatus === "Low Stock";
-    if (activeTab === "out")
-      return matchesSearch && stockStatus === "Out of Stock";
-    return matchesSearch;
-  });
-
+  if (activeTab === "all") return matchesSearch && matchesFilters;
+  if (activeTab === "low") return matchesSearch && matchesFilters && stockStatus === "Low Stock";
+  if (activeTab === "out") return matchesSearch && matchesFilters && stockStatus === "Out of Stock";
+  return matchesSearch && matchesFilters;
+});
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
         {/* Header */}
-        <div className="fixed top-0 left-64 right-0 z-50 bg-white p-6 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center">
-            <InventoryIcon className="text-yellow-600 mr-3 text-3xl" />
-            <h1 className="text-2xl font-bold text-yellow-700">
-              Gold Shop Inventory
-            </h1>
-          </div>
-          <button
-            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-            }}
-          >
-            <AddIcon className="mr-1" /> Add Gold Item
-          </button>
-        </div>
-
-        {/* Search and Filter */}
-        <div className="mt-24 p-6 flex flex-col md:flex-row gap-4 items-start md:items-center">
+        <div className="sticky top-0 left-64 right-0 z-50 bg-gradient-to-r from-yellow-600 to-yellow-700 p-4 shadow-sm">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex items-center">
+        <InventoryIcon className="text-white mr-3 text-3xl" />
+        <h1 className="text-2xl font-bold text-white tracking-tight">
+          Gold Shop Inventory Management
+        </h1>
+      </div>
+      <button
+        className="bg-white hover:bg-gray-50 text-yellow-700 px-4 py-2 rounded-lg flex items-center transition-all shadow-md hover:shadow-lg"
+        onClick={() => {
+          resetForm();
+          setShowForm(true);
+        }}
+      >
+        <AddIcon className="mr-2" /> Add Gold Item
+      </button>
+    </div>
+  </div>
+        <div className="mt-4 p-6 flex flex-col md:flex-row gap-4 items-start md:items-center">
           <div className="relative flex-grow">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <SearchIcon className="text-gray-400" />
@@ -353,8 +381,137 @@ const InventoryContent = () => {
             >
               Out of Stock
             </button>
+            <button 
+      className="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-lg flex items-center"
+      onClick={() => setShowFilters(!showFilters)}
+    >
+      <FilterListAltIcon className="mr-1" />
+      Filters
+    </button>
           </div>
         </div>
+         <div className="relative">    
+    {showFilters && (
+      <div className="mt-2 mb-10 ml-4 w-full bg-white rounded-xl shadow-md px-5 py-2 border border-gray-200">
+  <div className="flex justify-between items-center mb-4">
+    <h3 className="text-lg font-semibold text-gray-800">Filter Items</h3>
+    <button
+      className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+      onClick={() => setFilters({
+        minPrice: '', maxPrice: '',
+        minWeight: '', maxWeight: '',
+        purity: '', category: '', metalType: ''
+      })}
+    >
+      <RestartAltIcon className="mr-1" fontSize="small" />
+      Reset All
+    </button>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {/* Price Filter */}
+    <div className="bg-gray-50 p-4 rounded-lg">
+      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+        <CurrencyRupeeIcon className="mr-2 text-yellow-600" fontSize="small" />
+        Price Range (₹)
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="number"
+          placeholder="Min"
+          className="w-full pl-3 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+          value={filters.minPrice}
+          onChange={(e) => setFilters({...filters, minPrice: e.target.value})}
+        />
+        <StraightIcon className="text-gray-400" />
+        <input
+          type="number"
+          placeholder="Max"
+          className="w-full pl-3 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+          value={filters.maxPrice}
+          onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
+        />
+      </div>
+    </div>
+
+    {/* Weight Filter */}
+    <div className="bg-gray-50 p-4 rounded-lg">
+      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+        <BalanceIcon className="mr-2 text-yellow-600" fontSize="small" />
+        Weight Range (g)
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="number"
+          placeholder="Min"
+          className="w-full pl-3 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+          value={filters.minWeight}
+          onChange={(e) => setFilters({...filters, minWeight: e.target.value})}
+        />
+        <StraightIcon className="text-gray-400" />
+        <input
+          type="number"
+          placeholder="Max"
+          className="w-full pl-3 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+          value={filters.maxWeight}
+          onChange={(e) => setFilters({...filters, maxWeight: e.target.value})}
+        />
+      </div>
+    </div>
+
+    {/* Purity Filter */}
+    <div className="bg-gray-50 p-4 rounded-lg">
+      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+        <DiamondIcon className="mr-2 text-yellow-600" fontSize="small" />
+        Purity
+      </label>
+      <select
+        className="block w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 bg-white"
+        value={filters.purity}
+        onChange={(e) => setFilters({...filters, purity: e.target.value})}
+      >
+        <option value="">All Purity Levels</option>
+        <option value="24K">24K</option>
+        <option value="22K">22K</option>
+        <option value="18K">18K</option>
+        <option value="14K">14K</option>
+      </select>
+    </div>
+
+    {/* Category Filter */}
+    <div className="bg-gray-50 p-4 rounded-lg">
+      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+        <CategoryIcon className="mr-2 text-yellow-600" fontSize="small" />
+        Category
+      </label>
+      <select
+        className="block w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 bg-white"
+        value={filters.category}
+        onChange={(e) => setFilters({...filters, category: e.target.value})}
+      >
+        <option value="">All Categories</option>
+        <option value="Necklace">Necklace</option>
+        <option value="Ring">Ring</option>
+        <option value="Bracelet">Bracelet</option>
+        <option value="Earrings">Earrings</option>
+        <option value="Bangle">Bangle</option>
+        <option value="Chain">Chain</option>
+      </select>
+    </div>
+  </div>
+
+  {/* Apply Button for Mobile */}
+  <div className="mt-6 md:hidden">
+    <button
+      className="w-full py-2 px-4 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium"
+      onClick={() => setShowFilters(false)}
+    >
+      Apply Filters
+    </button>
+  </div>
+</div>
+    )}
+  </div>
 
         {/* Error Message */}
         {error && (
