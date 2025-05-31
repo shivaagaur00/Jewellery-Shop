@@ -239,3 +239,11 @@ export const getOrder=async()=>{
         console.log(error);
     }
 }
+export const getDashBoard=async()=>{
+    try {
+        let res=await axios.post(`${URL}/getDashBoard`);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}

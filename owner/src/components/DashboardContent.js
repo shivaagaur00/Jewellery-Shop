@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Notifications as NotificationsIcon,
   LocalShipping as ShippingIcon,
@@ -14,38 +14,59 @@ import {
   Diamond as DiamondIcon,
   Watch as WatchIcon,
   ShoppingCart as CartIcon,
-  Spa as SpaIcon // Using Spa icon as alternative for jewelry
+  Spa as SpaIcon 
 } from '@mui/icons-material';
+import { getDashBoard } from '../api/owners';
 
 const DashboardContent = () => {
-  // Notification data
-  const notifications = [
-    { id: 1, type: 'warning', message: 'Gold loan payment overdue for Priya Sharma', time: '2 hours ago' },
-    { id: 2, type: 'info', message: 'Diamond necklace order ready for delivery', time: '5 hours ago' },
-    { id: 3, type: 'success', message: 'Silver loan completed by Raj Patel', time: '1 day ago' },
-    { id: 4, type: 'warning', message: 'Low stock: 24K Gold chains (only 3 left)', time: '2 days ago' },
-  ];
+  const [details, setDetails] = useState({
+    gold: 0,
+    silver: 0,
+    platinum: 0,
+    totalActiveLoans: 0,
+    totalpendingOrders: 0,
+    todayRevenue: 0,
+    newCustomersToday: 0,
+    notifications: []
+  });
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      try {
+        const res = await getDashBoard();
+        setDetails(res.data.data);
+        console.log(res);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchDetails();
+  }, []);
 
   // Market prices - using SpaIcon for silver instead of RingIcon
   const marketPrices = [
-    { metal: '24K Gold', price: '₹5,890/g', change: '+1.2%', icon: <DiamondIcon className="text-yellow-500" /> },
-    { metal: 'Silver', price: '₹72.50/g', change: '+0.8%', icon: <SpaIcon className="text-gray-300" /> },
-    { metal: 'Platinum', price: '₹3,200/g', change: '-0.4%', icon: <WatchIcon className="text-gray-200" /> }
+    { metal: '24K Gold', price: `₹${details.gold}/g`, change: '+1.2%', icon: <DiamondIcon className="text-yellow-500" /> },
+    { metal: 'Silver', price: `₹${details.silver}/g`, change: '+0.8%', icon: <SpaIcon className="text-gray-300" /> },
+    { metal: 'Platinum', price: `₹${details.platinum}/g`, change: '-0.4%', icon: <WatchIcon className="text-gray-200" /> }
   ];
 
   // Quick stats
   const quickStats = [
-    { title: 'Active Loans', value: '18', icon: <MoneyIcon className="text-amber-800" /> },
-    { title: 'Pending Orders', value: '7', icon: <CartIcon className="text-purple-800" /> },
-    { title: 'Today\'s Revenue', value: '₹68,420', icon: <WalletIcon className="text-green-800" /> },
-    { title: 'New Customers', value: '3', icon: <TrendingUpIcon className="text-blue-800" /> }
+    { title: 'Active Loans', value: details.totalActiveLoans, icon: <MoneyIcon className="text-amber-800" /> },
+    { title: 'Pending Orders', value: details.totalpendingOrders, icon: <CartIcon className="text-purple-800" /> },
+    { title: 'Today\'s Revenue', value: `₹${details.todayRevenue}`, icon: <WalletIcon className="text-green-800" /> },
+    { title: 'New Customers', value: details.newCustomersToday, icon: <TrendingUpIcon className="text-blue-800" /> }
   ];
 
   const getNotificationIcon = (type) => {
     switch(type) {
-      case 'warning': return <WarningIcon className="text-orange-500" />;
-      case 'success': return <CheckCircleIcon className="text-green-600" />;
-      default: return <InfoIcon className="text-blue-500" />;
+      case 'LOAN_EXPIRY': 
+      case 'DELIVERY_DUE': 
+        return <WarningIcon className="text-orange-500" />;
+      case 'NEW_ORDERS': 
+        return <InfoIcon className="text-blue-500" />;
+      default: 
+        return <InfoIcon className="text-blue-500" />;
     }
   };
 
@@ -102,20 +123,24 @@ const DashboardContent = () => {
             Alerts
           </h2>
           <div className="mt-5">
-            {notifications.map(notification => (
-              <div key={notification.id} className="py-3 border-b border-amber-100 flex items-start">
-                <div className="text-xl mr-3">
-                  {getNotificationIcon(notification.type)}
+            {details.notifications.length > 0 ? (
+              details.notifications.map((notification, index) => (
+                <div key={index} className="py-3 border-b border-amber-100 flex items-start">
+                  <div className="text-xl mr-3">
+                    {getNotificationIcon(notification.type)}
+                  </div>
+                  <div>
+                    <p className="text-amber-900 font-medium mb-1">{notification.message}</p>
+                    <p className="text-amber-700 text-xs flex items-center">
+                      <TimeIcon className="text-sm mr-1" />
+                      Today
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-amber-900 font-medium mb-1">{notification.message}</p>
-                  <p className="text-amber-700 text-xs flex items-center">
-                    <TimeIcon className="text-sm mr-1" />
-                    {notification.time}
-                  </p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-amber-700 text-center py-4">No notifications</p>
+            )}
           </div>
         </div>
       </div>

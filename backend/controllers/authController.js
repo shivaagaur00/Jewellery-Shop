@@ -1,5 +1,93 @@
 import Owner from "./../Models/Owner.js";
+import { format } from "date-fns";
 
+export const getDetails = async (req, res) => {
+  try {
+    const today = format(new Date(), "yyyy-MM-dd");
+    const tomorrow = format(
+      new Date().setDate(new Date().getDate() + 1),
+      "yyyy-MM-dd"
+    );
+    const owner =await Owner.findOne();
+    const totalActiveLoans = owner.loans.filter(
+      (loan) => loan.status === "Pending"
+    ).length;
+    const totalPendingOrders = owner.orders.filter(
+      (order) => order.status === "pending"
+    ).length;
+    const todayRevenue = owner.transactions
+      .filter((txn) => txn.date === today)
+      .reduce((sum, txn) => sum + (txn.transactionAmount || 0), 0);
+    const newCustomersToday = owner.consumers.filter(
+      (consumer) => consumer.date.substring(0,10) === today
+    ).length;
+
+    const notifications = [];
+    owner.loans.forEach((loan) => {
+      if (loan.dueDate === today) {
+        notifications.push({
+          type: "LOAN_EXPIRY",
+          message: `Loan for ${loan.customer}  with ID ${loan.customerID} is due today`,
+        });
+      } else if (loan.dueDate === tomorrow) {
+        notifications.push({
+          type: "LOAN_EXPIRY",
+          message: `Loan for ${loan.customer} with ID ${loan.customerID} is due tomorrow`,
+        });
+      }
+    });
+    const newOrdersToday = owner.orders.filter((order) => order.date === today);
+    if (newOrdersToday.length > 0) {
+      notifications.push({
+        type: "NEW_ORDERS",
+        message: `${newOrdersToday.length} new order(s) received today`,
+      });
+    }
+
+    const deliveryDueToday = owner.orders.filter(
+      (order) => order.expectedDeliverDate === today
+    );
+    const deliveryDueTomorrow = owner.orders.filter(
+      (order) => order.expectedDeliverDate === tomorrow
+    );
+
+    if (deliveryDueToday.length > 0) {
+      notifications.push({
+        type: "DELIVERY_DUE",
+        message: `${deliveryDueToday.length} order(s) should be delivered today`,
+      });
+    }
+
+    if (deliveryDueTomorrow.length > 0) {
+      notifications.push({
+        type: "DELIVERY_DUE",
+        message: `${deliveryDueTomorrow.length} order(s) due for delivery tomorrow`,
+      });
+    }
+    const data = {
+      gold: 2000,
+      silver: 2000,
+      platinum: 2000,
+      totalActiveLoans: totalActiveLoans,
+      totalpendingOrders: totalPendingOrders,
+      todayRevenue: todayRevenue,
+      newCustomersToday: newCustomersToday,
+      notifications: notifications,
+    };
+
+    res.status(200).json({
+      success: true,
+      data: data,
+    });
+  } catch (error) {
+    console.error("Error in getDetails:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch dashboard data",
+      error: error.message,
+    });
+  }
+};
 export const ownerLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -63,7 +151,7 @@ export const getLoans = async (req, res) => {
 // @access  Private
 export const addItem = async (req, res) => {
   try {
-    const { 
+    const {
       ID,
       metalType,
       itemName,
@@ -74,10 +162,19 @@ export const addItem = async (req, res) => {
       tags,
       category,
       date,
-      image
+      image,
     } = req.body;
 
-    if (!ID || !itemName || !weight || !itemPurity || !quantity || !category || !date || !image) {
+    if (
+      !ID ||
+      !itemName ||
+      !weight ||
+      !itemPurity ||
+      !quantity ||
+      !category ||
+      !date ||
+      !image
+    ) {
       return res.status(400).json({
         status: 1,
         message: "Please provide all required fields",
@@ -90,7 +187,7 @@ export const addItem = async (req, res) => {
         message: "Owner not found",
       });
     }
-    const existingItem = owner.item.find(item => item.ID === ID);
+    const existingItem = owner.item.find((item) => item.ID === ID);
     if (existingItem) {
       return res.status(400).json({
         status: 1,
@@ -105,7 +202,7 @@ export const addItem = async (req, res) => {
       itemPurity,
       metalPrice,
       quantity: Number(quantity),
-      tags: Array.isArray(tags) ? tags : (tags ? tags.split(',') : []),
+      tags: Array.isArray(tags) ? tags : tags ? tags.split(",") : [],
       category,
       date,
       image,
@@ -133,7 +230,7 @@ export const addItem = async (req, res) => {
 export const updateItem = async (req, res) => {
   try {
     const { id } = req.body;
-    const {updateData} = req.body;
+    const { updateData } = req.body;
 
     const owner = await Owner.findOne();
     if (!owner) {
@@ -142,7 +239,9 @@ export const updateItem = async (req, res) => {
         message: "Owner not found",
       });
     }
-    const itemIndex = owner.item.findIndex(item =>item._id.toString()=== id);
+    const itemIndex = owner.item.findIndex(
+      (item) => item._id.toString() === id
+    );
     if (itemIndex === -1) {
       return res.status(404).json({
         status: 1,
@@ -153,7 +252,7 @@ export const updateItem = async (req, res) => {
     // Prepare updated item
     const updatedItem = {
       ...owner.item[itemIndex].toObject(),
-      ...updateData
+      ...updateData,
     };
 
     // Convert quantity to number if it exists in update data
@@ -163,9 +262,11 @@ export const updateItem = async (req, res) => {
 
     // Convert tags to array if it exists in update data
     if (updateData.tags !== undefined) {
-      updatedItem.tags = Array.isArray(updateData.tags) 
-        ? updateData.tags 
-        : (updateData.tags ? updateData.tags.split(',') : []);
+      updatedItem.tags = Array.isArray(updateData.tags)
+        ? updateData.tags
+        : updateData.tags
+        ? updateData.tags.split(",")
+        : [];
     }
 
     // Update the item
@@ -201,7 +302,9 @@ export const deleteItem = async (req, res) => {
     }
 
     // Find the item index
-    const itemIndex = owner.item.findIndex(item => item._id.toString() === id);
+    const itemIndex = owner.item.findIndex(
+      (item) => item._id.toString() === id
+    );
     if (itemIndex === -1) {
       return res.status(404).json({
         status: 1,
@@ -239,7 +342,7 @@ export const getItemById = async (req, res) => {
       });
     }
 
-    const item = owner.item.find(item => item.ID === id);
+    const item = owner.item.find((item) => item.ID === id);
     if (!item) {
       return res.status(404).json({
         status: 1,
@@ -261,7 +364,7 @@ export const getItemById = async (req, res) => {
 };
 export const addLoan = async (req, res) => {
   try {
-    const { 
+    const {
       customer,
       customerID,
       itemType,
@@ -274,13 +377,13 @@ export const addLoan = async (req, res) => {
       dueDate,
       holderName,
       status,
-      collateralImages
+      collateralImages,
     } = req.body;
     if (
       !customer ||
       !customerID ||
       !itemType ||
-      !itemDescription||
+      !itemDescription ||
       !loanAmount ||
       !interestRate ||
       !weight ||
@@ -288,87 +391,88 @@ export const addLoan = async (req, res) => {
       !dateIssued ||
       !dueDate ||
       !status ||
-      !collateralImages) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      !collateralImages
+    ) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
     let owner = await Owner.findOne();
     const newLoan = {
       customer: customer,
       customerID: customerID,
-      itemType:itemType,
-      itemDescription:itemDescription,
-      loanAmount:loanAmount,
-      interestRate:interestRate,
-      weight:weight,
-      purity:purity,
-      dateIssued:dateIssued,
-      dueDate:dueDate,
-      holderName:holderName,
-      status:status,
-      collateralImages:collateralImages,
+      itemType: itemType,
+      itemDescription: itemDescription,
+      loanAmount: loanAmount,
+      interestRate: interestRate,
+      weight: weight,
+      purity: purity,
+      dateIssued: dateIssued,
+      dueDate: dueDate,
+      holderName: holderName,
+      status: status,
+      collateralImages: collateralImages,
     };
     owner.loans.push(newLoan);
-    let cust=owner.consumers.find(c=>c.id===customerID);
+    let cust = owner.consumers.find((c) => c.id === customerID);
     cust.loan.push(newLoan);
     await owner.save();
     res.status(201).json({
       success: true,
-      message: 'Loan added successfully',
-      loan: newLoan
+      message: "Loan added successfully",
+      loan: newLoan,
     });
-
   } catch (error) {
-    console.error('Error adding loan:', error);
-    res.status(500).json({ 
+    console.error("Error adding loan:", error);
+    res.status(500).json({
       success: false,
-      message: 'Failed to add loan',
-      error: error.message 
+      message: "Failed to add loan",
+      error: error.message,
     });
   }
 };
 export const updateLoan = async (req, res) => {
   try {
-    const {id,updateData,loanPaidedAmount } = req.body;
+    const { id, updateData, loanPaidedAmount } = req.body;
 
     if (!id) {
-      return res.status(400).json({ message: 'Loan ID is required' });
+      return res.status(400).json({ message: "Loan ID is required" });
     }
     const owner = await Owner.findOne();
     if (!owner) {
-      return res.status(404).json({ message: 'Owner document not found' });
+      return res.status(404).json({ message: "Owner document not found" });
     }
-    const loanIndex = owner.loans.findIndex(loan => loan._id.toString() === id);
+    const loanIndex = owner.loans.findIndex(
+      (loan) => loan._id.toString() === id
+    );
     if (loanIndex === -1) {
-      return res.status(404).json({ message: 'Loan not found' });
+      return res.status(404).json({ message: "Loan not found" });
     }
-    if(updateData.status==="Paid"){
+    if (updateData.status === "Paid") {
       owner.loans[loanIndex].datePaid = new Date().toISOString();
       owner.loans[loanIndex].loanPaidedAmount = loanPaidedAmount;
       owner.transactions.push({
-        transactionMode:"Cash",
-        transactionAmount:loanPaidedAmount,
-        customerID:updateData.customer,
-        date:new Date().toISOString(),
-        status:"Success"
-      })
+        transactionMode: "Cash",
+        transactionAmount: loanPaidedAmount,
+        customerID: updateData.customer,
+        date: new Date().toISOString(),
+        status: "Success",
+      });
     }
     owner.loans[loanIndex] = {
       ...owner.loans[loanIndex].toObject(),
-      ...updateData
+      ...updateData,
     };
     await owner.save();
     res.status(200).json({
       success: true,
-      message: 'Loan updated successfully',
-      loan: owner.loans[loanIndex]
+      message: "Loan updated successfully",
+      loan: owner.loans[loanIndex],
     });
-
   } catch (error) {
-    console.error('Error updating loan:', error);
-    res.status(500).json({ 
+    console.error("Error updating loan:", error);
+    res.status(500).json({
       success: false,
-      message: 'Failed to update loan',
-      error: error.message 
+      message: "Failed to update loan",
+      error: error.message,
     });
   }
 };
@@ -377,39 +481,40 @@ export const updateLoan = async (req, res) => {
 export const deleteLoan = async (req, res) => {
   try {
     const { loanId } = req.body;
-    loanId
+    loanId;
     if (!loanId) {
-      return res.status(400).json({ message: 'Loan ID is required' });
+      return res.status(400).json({ message: "Loan ID is required" });
     }
 
     // Find owner document
     const owner = await Owner.findOne();
 
     if (!owner) {
-      return res.status(404).json({ message: 'Owner document not found' });
+      return res.status(404).json({ message: "Owner document not found" });
     }
 
     // Find the loan to delete
-    const loanIndex = owner.loans.findIndex(loan => loan._id.toString() === loanId);
+    const loanIndex = owner.loans.findIndex(
+      (loan) => loan._id.toString() === loanId
+    );
 
     if (loanIndex === -1) {
-      return res.status(404).json({ message: 'Loan not found' });
+      return res.status(404).json({ message: "Loan not found" });
     }
     const deletedLoan = owner.loans.splice(loanIndex, 1);
     await owner.save();
 
     res.status(200).json({
       success: true,
-      message: 'Loan deleted successfully',
-      loan: deletedLoan[0]
+      message: "Loan deleted successfully",
+      loan: deletedLoan[0],
     });
-
   } catch (error) {
-    console.error('Error deleting loan:', error);
-    res.status(500).json({ 
+    console.error("Error deleting loan:", error);
+    res.status(500).json({
       success: false,
-      message: 'Failed to delete loan',
-      error: error.message 
+      message: "Failed to delete loan",
+      error: error.message,
     });
   }
 };
@@ -418,10 +523,16 @@ export const addCustomer = async (req, res) => {
   const { customerData } = req.body;
 
   // Validate required fields
-  if (!customerData || !customerData.id || !customerData.name || !customerData.password) {
-    return res.status(400).json({ 
+  if (
+    !customerData ||
+    !customerData.id ||
+    !customerData.name ||
+    !customerData.password
+  ) {
+    return res.status(400).json({
       success: false,
-      message: 'Missing required fields: email, name, and password are required' 
+      message:
+        "Missing required fields: email, name, and password are required",
     });
   }
 
@@ -431,7 +542,7 @@ export const addCustomer = async (req, res) => {
     if (!emailRegex.test(customerData.id)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid email format'
+        message: "Invalid email format",
       });
     }
 
@@ -440,54 +551,55 @@ export const addCustomer = async (req, res) => {
     if (!owner) {
       return res.status(404).json({
         success: false,
-        message: 'Owner not found'
+        message: "Owner not found",
       });
     }
 
     // Check if customer already exists
-    const existingCustomer = owner.consumers.find(consumer => consumer.id === customerData.id);
+    const existingCustomer = owner.consumers.find(
+      (consumer) => consumer.id === customerData.id
+    );
     if (existingCustomer) {
       return res.status(409).json({
         success: false,
-        message: 'Customer with this email already exists'
+        message: "Customer with this email already exists",
       });
     }
 
     // Create new customer with default values
     const newCustomer = {
-      id: customerData.id,           // Email as ID
+      id: customerData.id, // Email as ID
       name: customerData.name,
       password: customerData.password, // Note: In production, you should hash this
-      image: customerData.image || '',
-      address: customerData.address || '',
-      contactNumber: customerData.contactNumber || '',
+      image: customerData.image || "",
+      address: customerData.address || "",
+      contactNumber: customerData.contactNumber || "",
       orders: [],
       purchases: [],
       loan: [],
       exchange: [],
       offers: [],
-      transactions:[],
-      date: ""+new Date().toISOString()
+      transactions: [],
+      date: "" + new Date().toISOString(),
     };
     owner.consumers.push(newCustomer);
     await owner.save();
 
     return res.status(201).json({
       success: true,
-      message: 'Customer added successfully',
+      message: "Customer added successfully",
       customer: {
         id: newCustomer.id,
         name: newCustomer.name,
-        date: newCustomer.date
-      }
+        date: newCustomer.date,
+      },
     });
-
   } catch (error) {
-    console.error('Error adding customer:', error);
+    console.error("Error adding customer:", error);
     return res.status(500).json({
       success: false,
-      message: 'Internal server error',
-      error: error.message
+      message: "Internal server error",
+      error: error.message,
     });
   }
 };
@@ -520,7 +632,7 @@ export const deleteCustomer = async (req, res) => {
     if (!owner) {
       return res.status(404).json({ message: "Owner not found" });
     }
-    owner.consumers = owner.consumers.filter(c => c.id !== id);
+    owner.consumers = owner.consumers.filter((c) => c.id !== id);
     await owner.save();
     return res.status(200).json({ message: "Customer deleted successfully" });
   } catch (error) {
@@ -542,15 +654,19 @@ export const getSpecificCustomer = async (req, res) => {
     }
 
     // Find the customer from owner's consumers array
-    const customer = owner.consumers.find(x => x._id.toString() === customerId);
+    const customer = owner.consumers.find(
+      (x) => x._id.toString() === customerId
+    );
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
     const purchases = [];
     for (const saleId of customer.sales) {
-      const sale = owner.sale.find(s => s._id.toString() === saleId.toString());
+      const sale = owner.sale.find(
+        (s) => s._id.toString() === saleId.toString()
+      );
       if (sale) purchases.push(sale);
-}
+    }
     const customerData = {
       ...(customer.toObject?.() || customer),
       purchases,

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addCustomer, addItem, addLoan, deleteCustomer, deleteItem, deleteLoan, getCustomers, getItems, getLoans, getSpecificCustomer, ownerLogin, updateItem, updateLoan } from "../controllers/authController.js";
+import { addCustomer, addItem, addLoan, deleteCustomer, deleteItem, deleteLoan, getCustomers, getDetails, getItems, getLoans, getSpecificCustomer, ownerLogin, updateItem, updateLoan } from "../controllers/authController.js";
 import { addSale } from "../controllers/salesControllers.js";
 import { addTransaction, deleteTransaction, editTransaction, getTransactions } from "../controllers/transactions.js";
 import { addOrder, deleteOrder, editOrder, getOrder, getOrders } from "../controllers/orderController.js";
@@ -27,5 +27,6 @@ ownerRouter.post("/editOrder",editOrder);
 ownerRouter.post("/deleteOrder",deleteOrder);
 ownerRouter.post("/getOrder",getOrder);
 ownerRouter.post("/getOrders",getOrders);
+ownerRouter.post("/getDashBoard",getDetails);
 
 export default ownerRouter;
