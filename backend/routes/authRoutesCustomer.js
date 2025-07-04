@@ -1,0 +1,26 @@
+import express from 'express';
+import { signup, login, getCustomer, addEmailForNewsLetter} from './../controllersCustomers/authController.js';
+import { addToCart, changePassword, editBasicInfo, getCartItems} from './../controllersCustomers/changeCustomerInfo.js';
+import { authMiddleware } from './../middleware/authMiddleware.js';
+import { getDetailsWithoutLogin } from '../controllersCustomers/detailsWithoutLogin.js';
+import {addOrder, fetchCustomOrders,getLoansOfCustomer, getNotDeliveredOrderModalItems, getNotDeliverOrders, getPurchasesOfCustomer, placeOrder, removeFromCart} from '../controllersCustomers/orderController.js';
+const router = express.Router();
+router.post('/signup', signup);
+router.post('/login', login);
+router.get('/customer', authMiddleware, getCustomer);
+router.post('/resetPassword',authMiddleware,changePassword);
+router.post('/editBasicInfo',authMiddleware,editBasicInfo);
+router.post('/getDetailsWithoutLogin',getDetailsWithoutLogin);
+router.post('/addToCart',authMiddleware,addToCart);
+router.get('/getCartItems',authMiddleware,getCartItems);
+router.post('/addEmailForNewsLetter',addEmailForNewsLetter);
+router.post('/addCutomerOrder',authMiddleware,addOrder);
+router.get('/fetchCustomOrders',authMiddleware,fetchCustomOrders);
+router.post('/removeFromCart',authMiddleware,removeFromCart);
+router.post('/placeOrder',authMiddleware,placeOrder);
+router.get('/getNotDeliverOrders',authMiddleware,getNotDeliverOrders);
+router.post('/fetchNotDeliveredOrderModalItems',authMiddleware,getNotDeliveredOrderModalItems);
+router.get('/fetchLoansOfCustomer',authMiddleware,getLoansOfCustomer);
+router.get('/fetchPurchasesOfCustomer',authMiddleware,getPurchasesOfCustomer);
+
+export default router;

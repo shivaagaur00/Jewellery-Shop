@@ -3,8 +3,10 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
+
   Search as SearchIcon,
   Close as CloseIcon,
+  Inventory as InventoryIcon,
   Save as SaveIcon,
   FilterList as FilterListIcon,
   CloudUpload as CloudUploadIcon,
@@ -14,6 +16,8 @@ import {
 } from '@mui/icons-material';
 import { addOrder, deleteOrder, editOrder, getOrder, getOrders } from '../api/owners';
 import axios from 'axios';
+import DiamondIcon from '@mui/icons-material/Diamond';
+import PersonIcon from '@mui/icons-material/Person';
 
 const OrderModal = ({ isOpen, onClose, onSubmit, order, isEdit, customers }) => {
   const [formData, setFormData] = useState({
@@ -589,31 +593,46 @@ const filteredOrders = orders.filter(order => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Order Management</h1>
-          <p className="text-gray-600 mt-1">{orders.length} orders total</p>
+<div className="min-h-screen bg-gray-50">
+  {/* Premium Header */}
+  <header className="bg-gradient-to-b from-yellow-700 to-yellow-600 shadow-lg mb-4">
+    <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center">
+          <div className="bg-yellow-500/20 p-3 rounded-xl backdrop-blur-sm border border-yellow-400/30">
+            <InventoryIcon className="text-white text-2xl" />
+          </div>
+          <div className="ml-4">
+            <h1 className="text-2xl font-bold text-white tracking-tight font-serif">
+              LuxeGold Orders
+            </h1>
+            <p className="text-yellow-100/90 text-sm mt-1 font-light">
+              {orders.length} precious orders in your collection
+            </p>
+          </div>
         </div>
+        
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
           <div className="relative flex-1 min-w-[200px]">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <SearchIcon className="text-gray-400" />
+              <SearchIcon className="text-yellow-600" />
             </div>
             <input
               type="text"
               placeholder="Search orders..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-10 pr-4 py-2.5 border border-yellow-200 rounded-xl bg-white/80 shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-300 text-gray-700 placeholder-yellow-600/60 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          
           <div className="flex gap-2">
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 border border-gray-300"
+              className="bg-white/90 hover:bg-white text-yellow-800 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-yellow-200 shadow-sm hover:shadow-md transition-all"
             >
-              <FilterListIcon /> Filters
+              <FilterListIcon /> 
+              <span>Filters</span>
             </button>
             <button 
               onClick={() => {
@@ -621,43 +640,55 @@ const filteredOrders = orders.filter(order => {
                 setIsEdit(false);
                 setShowAddModal(true);
               }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 whitespace-nowrap"
+              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap shadow-md hover:shadow-lg transition-all"
             >
-              <AddIcon /> New Order
+              <AddIcon /> 
+              <span>New Order</span>
             </button>
           </div>
         </div>
       </div>
+    </div>
+  </header>
 
-      {showFilters && (
-        <div className="bg-white p-4 rounded-lg shadow-md mb-6 border border-gray-200">
+  {/* Main Content */}
+  <main className="max-w-7xl mx-auto px-6 py-6 -mt-6">
+    {/* Filters Panel */}
+    {showFilters && (
+      <div className="bg-white rounded-xl shadow-lg mb-6 border border-yellow-100 overflow-hidden">
+        <div className="p-5">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-medium text-gray-800">Filter Options</h3>
+            <h3 className="text-lg font-medium text-gray-800 flex items-center">
+              <FilterListIcon className="mr-2 text-yellow-600" />
+              Filter Orders
+            </h3>
             <button 
               onClick={resetFilters}
-              className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              className="text-sm text-yellow-700 hover:text-yellow-900 flex items-center gap-1 font-medium"
             >
               <ClearIcon fontSize="small" /> Reset
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-300 focus:border-amber-300 bg-white/70"
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            
+            <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-300 focus:border-amber-300 bg-white/70"
               >
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
@@ -666,12 +697,13 @@ const filteredOrders = orders.filter(order => {
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Metal Type</label>
+            
+            <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Metal Type</label>
               <select
                 value={metalFilter}
                 onChange={(e) => setMetalFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-300 focus:border-amber-300 bg-white/70"
               >
                 <option value="all">All Metals</option>
                 <option value="Gold">Gold</option>
@@ -682,110 +714,139 @@ const filteredOrders = orders.filter(order => {
             </div>
           </div>
         </div>
-      )}
-
-      <OrderModal
-        isOpen={showAddModal}
-        onClose={() => {
-          setShowAddModal(false);
-          setCurrentOrder(null);
-        }}
-        onSubmit={isEdit ? handleUpdateOrder : handleAddOrder}
-        order={currentOrder}
-        isEdit={isEdit}
-        customers={customers}
-      />
-
-      <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-blue-600">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Order ID</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Customer</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Item</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Metal</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Weight</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Price</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Date</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedOrders.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="px-6 py-8 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <SearchIcon className="text-gray-400 text-4xl mb-2" />
-                      <p className="text-gray-500 text-lg">No orders found</p>
-                      <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filters</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                sortedOrders.map(order => (
-                  <tr key={order._id.toString()} className="hover:bg-blue-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                      {order._id.substring(order._id.length - 6)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{order.customerName}</div>
-                      <div className="text-xs text-gray-500">{order.customerID}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{order.itemName}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-xs">{order.orderDescription}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className="capitalize">{order.metalType}</span> ({order.itemPurity})
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {order.weightExpected}g
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="font-medium">${order.priceExpected}</div>
-                      <div className="text-xs">Paid: ${order.depositedAmount}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                        {order.status.replace('-', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(order.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setIsEdit(true);
-                            setCurrentOrder(order);
-                            setShowAddModal(true);
-                          }
-                          }
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100"
-                          title="Edit"
-                        >
-                          <EditIcon fontSize="small" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteOrder(order._id.toString())}
-                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100"
-                          title="Delete"
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
+    )}
+
+    {/* Orders Grid */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {sortedOrders.length === 0 ? (
+        <div className="col-span-full flex flex-col items-center justify-center py-16 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl border-2 border-dashed border-amber-200">
+          <SearchIcon className="text-gray-400 text-4xl mb-3" />
+          <p className="text-gray-500 text-lg">No orders found</p>
+          <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filters</p>
+          <button
+            className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
+            onClick={() => {
+              setCurrentOrder(null);
+              setIsEdit(false);
+              setShowAddModal(true);
+            }}
+          >
+            <AddIcon className="mr-2" />
+            Create New Order
+          </button>
+        </div>
+      ) : (
+        sortedOrders.map(order => (
+          <div key={order._id.toString()} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            {/* Order Image */}
+            <div className="relative bg-gradient-to-br from-amber-50 to-yellow-50 flex items-center justify-center p-6 border-b border-amber-100 h-48">
+              {order.image ? (
+                <img
+                  src={order.image}
+                  alt={order.itemName}
+                  className="w-full h-full object-contain object-center transition-transform duration-500 group-hover:scale-105"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-yellow-200">
+                  <DiamondIcon className="w-16 h-16" />
+                </div>
+              )}
+              <div className="absolute top-3 right-3">
+                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
+                  {order.status.replace('-', ' ')}
+                </span>
+              </div>
+            </div>
+
+            {/* Order Details */}
+            <div className="p-5">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 truncate">
+                  {order.itemName}
+                </h3>
+                <span className="text-sm font-medium text-yellow-600">
+                  #{order._id.substring(order._id.length - 6)}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                  <PersonIcon className="text-amber-600 text-sm" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{order.customerName}</p>
+                  <p className="text-xs text-gray-500">{order.customerID}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                <div>
+                  <p className="text-gray-500">Metal</p>
+                  <p className="font-medium capitalize">{order.metalType} ({order.itemPurity})</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Weight</p>
+                  <p className="font-medium">{order.weightExpected}g</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Price</p>
+                  <p className="font-medium">₹{order.priceExpected}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Paid</p>
+                  <p className="font-medium">₹{order.depositedAmount}</p>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                <div>
+                  <p className="text-xs text-gray-400">Order Date</p>
+                  <p className="text-sm text-gray-600">
+                    {new Date(order.date).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setIsEdit(true);
+                      setCurrentOrder(order);
+                      setShowAddModal(true);
+                    }}
+                    className="p-2 text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+                    title="Edit"
+                  >
+                    <EditIcon className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteOrder(order._id.toString())}
+                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete"
+                  >
+                    <DeleteIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
     </div>
+  </main>
+
+  {/* Order Modal */}
+  <OrderModal
+    isOpen={showAddModal}
+    onClose={() => {
+      setShowAddModal(false);
+      setCurrentOrder(null);
+    }}
+    onSubmit={isEdit ? handleUpdateOrder : handleAddOrder}
+    order={currentOrder}
+    isEdit={isEdit}
+    customers={customers}
+  />
+</div>
   );
 };
 

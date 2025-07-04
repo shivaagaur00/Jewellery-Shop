@@ -1,36 +1,20 @@
 import jwt from 'jsonwebtoken';
-import asyncHandler from 'express-async-handler';
-import Owner from './../Models/Owner.js';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-very-secure-secret-key';
-
-export const protect = asyncHandler(async (req, res, next) => {
-  let token;
-
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    try {
-      // Get token from header
-      token = req.headers.authorization.split(' ')[1];
-
-      // Verify token
-      const decoded = jwt.verify(token, JWT_SECRET);
-
-      // Get owner from the token
-      req.owner = await Owner.findById(decoded.id).select('-owners.password');
-
-      next();
-    } catch (error) {
-      console.error(error);
-      res.status(401);
-      throw new Error('Not authorized, token failed');
-    }
-  }
-
+import dotenv from 'dotenv';
+dotenv.config();
+const JWT_SECRET = process.env.JWT_SECRET;
+export const authMiddleware = (req, res, next) => {
+  // console.log(req.header);
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  // console.log(token);
   if (!token) {
-    res.status(401);
-    throw new Error('Not authorized, no token');
+    return res.status(401).json({ message: 'No token, authorization denied' });
   }
-});
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    // console.log(req.user);
+    next();
+  } catch (error) {
+    res.status(400).json({ message: 'Token is not valid' });
+  }
+};

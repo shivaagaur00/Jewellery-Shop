@@ -146,9 +146,6 @@ export const getLoans = async (req, res) => {
     });
   }
 };
-// @desc    Add new item
-// @route   POST /api/items
-// @access  Private
 export const addItem = async (req, res) => {
   try {
     const {
@@ -209,7 +206,16 @@ export const addItem = async (req, res) => {
     };
     owner.item.push(newItem);
     await owner.save();
-
+    //  if (owner.newLetterEmails?.length > 0) {
+    //   await Mailer.sendNewItemNotification(owner.newLetterEmails, {
+    //     itemName,
+    //     metalType,
+    //     weight,
+    //     itemPurity,
+    //     image
+    //   });
+    //   console.log('New item notification sent to subscribers');
+    // }
     res.status(201).json({
       status: 0,
       data: newItem,
@@ -223,10 +229,6 @@ export const addItem = async (req, res) => {
     });
   }
 };
-
-// @desc    Update item
-// @route   PUT /api/items/:id
-// @access  Private
 export const updateItem = async (req, res) => {
   try {
     const { id } = req.body;
@@ -248,19 +250,13 @@ export const updateItem = async (req, res) => {
         message: "Item not found",
       });
     }
-
-    // Prepare updated item
     const updatedItem = {
       ...owner.item[itemIndex].toObject(),
       ...updateData,
     };
-
-    // Convert quantity to number if it exists in update data
     if (updateData.quantity !== undefined) {
       updatedItem.quantity = Number(updateData.quantity);
     }
-
-    // Convert tags to array if it exists in update data
     if (updateData.tags !== undefined) {
       updatedItem.tags = Array.isArray(updateData.tags)
         ? updateData.tags
@@ -268,8 +264,6 @@ export const updateItem = async (req, res) => {
         ? updateData.tags.split(",")
         : [];
     }
-
-    // Update the item
     owner.item[itemIndex] = updatedItem;
     await owner.save();
 
@@ -285,10 +279,6 @@ export const updateItem = async (req, res) => {
     });
   }
 };
-
-// @desc    Delete item
-// @route   DELETE /api/items/:id
-// @access  Private
 export const deleteItem = async (req, res) => {
   try {
     const { id } = req.body;
@@ -300,8 +290,6 @@ export const deleteItem = async (req, res) => {
         message: "Owner not found",
       });
     }
-
-    // Find the item index
     const itemIndex = owner.item.findIndex(
       (item) => item._id.toString() === id
     );
@@ -326,10 +314,6 @@ export const deleteItem = async (req, res) => {
     });
   }
 };
-
-// @desc    Get single item by ID
-// @route   GET /api/items/:id
-// @access  Private
 export const getItemById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -485,15 +469,11 @@ export const deleteLoan = async (req, res) => {
     if (!loanId) {
       return res.status(400).json({ message: "Loan ID is required" });
     }
-
-    // Find owner document
     const owner = await Owner.findOne();
 
     if (!owner) {
       return res.status(404).json({ message: "Owner document not found" });
     }
-
-    // Find the loan to delete
     const loanIndex = owner.loans.findIndex(
       (loan) => loan._id.toString() === loanId
     );
@@ -521,8 +501,6 @@ export const deleteLoan = async (req, res) => {
 
 export const addCustomer = async (req, res) => {
   const { customerData } = req.body;
-
-  // Validate required fields
   if (
     !customerData ||
     !customerData.id ||
@@ -537,7 +515,6 @@ export const addCustomer = async (req, res) => {
   }
 
   try {
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(customerData.id)) {
       return res.status(400).json({
@@ -545,8 +522,6 @@ export const addCustomer = async (req, res) => {
         message: "Invalid email format",
       });
     }
-
-    // Find owner and check for existing customer
     const owner = await Owner.findOne();
     if (!owner) {
       return res.status(404).json({
@@ -554,8 +529,6 @@ export const addCustomer = async (req, res) => {
         message: "Owner not found",
       });
     }
-
-    // Check if customer already exists
     const existingCustomer = owner.consumers.find(
       (consumer) => consumer.id === customerData.id
     );
@@ -565,12 +538,10 @@ export const addCustomer = async (req, res) => {
         message: "Customer with this email already exists",
       });
     }
-
-    // Create new customer with default values
     const newCustomer = {
-      id: customerData.id, // Email as ID
+      id: customerData.id, 
       name: customerData.name,
-      password: customerData.password, // Note: In production, you should hash this
+      password: customerData.password,
       image: customerData.image || "",
       address: customerData.address || "",
       contactNumber: customerData.contactNumber || "",
@@ -644,7 +615,6 @@ export const deleteCustomer = async (req, res) => {
 export const getSpecificCustomer = async (req, res) => {
   try {
     const { customerId } = req.body;
-
     const owner = await Owner.findOne();
     if (!owner) {
       return res.status(404).json({
@@ -652,10 +622,8 @@ export const getSpecificCustomer = async (req, res) => {
         message: "Owner not found",
       });
     }
-
-    // Find the customer from owner's consumers array
     const customer = owner.consumers.find(
-      (x) => x._id.toString() === customerId
+      (x) => x.id === customerId
     );
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });

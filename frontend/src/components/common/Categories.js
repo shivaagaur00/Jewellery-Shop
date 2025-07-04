@@ -1,14 +1,19 @@
+// Categories.js
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import DiamondIcon from '@mui/icons-material/Diamond';
 import WatchIcon from '@mui/icons-material/Watch';
 import RingIcon from '@mui/icons-material/AccountTree';
 
 const Categories = () => {
+  const navigate = useNavigate();
+  
   const categories = [
     {
       id: 1,
       name: 'Gold Jewelry',
+      value: 'gold',
       icon: <DiamondIcon className="text-5xl text-amber-500" />,
       items: 128,
       bg: 'bg-amber-50',
@@ -17,6 +22,7 @@ const Categories = () => {
     {
       id: 2,
       name: 'Silver Jewelry',
+      value: 'silver',
       icon: <LocalOfferIcon className="text-5xl text-gray-500" />,
       items: 95,
       bg: 'bg-gray-50',
@@ -25,6 +31,7 @@ const Categories = () => {
     {
       id: 3,
       name: 'Bridal Sets',
+      value: 'bridal',
       icon: <RingIcon className="text-5xl text-rose-400" />,
       items: 42,
       bg: 'bg-rose-50',
@@ -33,12 +40,17 @@ const Categories = () => {
     {
       id: 4,
       name: 'Watches',
+      value: 'watches',
       icon: <WatchIcon className="text-5xl text-blue-500" />,
       items: 36,
       bg: 'bg-blue-50',
       hover: 'hover:bg-blue-100'
     }
   ];
+
+  const handleCategoryClick = (categoryValue) => {
+    navigate(`/collections?category=${categoryValue}`);
+  };
 
   return (
     <section id="categories" className="py-20 bg-gradient-to-b from-amber-50 to-white">
@@ -54,7 +66,8 @@ const Categories = () => {
           {categories.map((category) => (
             <div 
               key={category.id} 
-              className={`${category.bg} ${category.hover} p-8 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 text-center transform hover:-translate-y-2 flex flex-col items-center`}
+              className={`${category.bg} ${category.hover} p-8 rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 text-center transform hover:-translate-y-2 flex flex-col items-center cursor-pointer`}
+              onClick={() => handleCategoryClick(category.value)}
             >
               <div className="w-20 h-20 flex items-center justify-center mb-6 rounded-full bg-white shadow-inner">
                 {category.icon}
@@ -66,13 +79,6 @@ const Categories = () => {
               </button>
             </div>
           ))}
-        </div>
-
-        <div className="text-center mt-20">
-          <button className="relative px-8 py-4 bg-transparent border-2 border-amber-600 text-amber-600 rounded-full font-semibold hover:bg-amber-600 hover:text-white transition-all duration-300 group overflow-hidden">
-            <span className="relative z-10">View All Categories </span>
-            <span className="absolute inset-0 bg-amber-600 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 z-0"></span>
-          </button>
         </div>
       </div>
     </section>

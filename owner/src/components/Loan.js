@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { addLoan, updateLoan, deleteLoan, getLoans } from '../api/owners';
+import { Link } from 'react-router-dom';
 import {
   MonetizationOn as LoanIcon,
   AttachMoney as MoneyIcon,
@@ -16,9 +17,13 @@ import {
   Diamond as DiamondIcon,
   Spa as SilverIcon,
   Paid as AmountDueIcon,
-  CloudUpload as UploadIcon
+  CloudUpload as UploadIcon,
+  Close as CloseIcon,
+  FilterList as FilterListIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 import axios from 'axios';
+import SaveIcon from '@mui/icons-material/Save';
 const Loan = () => {
   const LOAN_STATUS = {
     ACTIVE: 'Active',
@@ -26,19 +31,22 @@ const Loan = () => {
     DEFAULTED: 'Defaulted',
     PENDING: 'Pending'
   };
+
   const [loans, setLoans] = useState([]);
-  const [loading,setLoading]=useState(true);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  // const [showFilters, setShowFilters] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortOption, setSortOption] = useState('newest');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [metalFilter, setMetalFilter] = useState('all');
   const [currentLoan, setCurrentLoan] = useState(null);
-  const [showDropdown, setShowDropdown] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState(null);
+  
   const [formData, setFormData] = useState({
     customer: '',
-    customerID:'',
+    customerID: '',
     itemType: 'Gold',
     itemDescription: '',
     weight: '',
@@ -47,16 +55,16 @@ const Loan = () => {
     interestRate: 12,
     dateIssued: new Date().toISOString().split('T')[0],
     dueDate: '',
-    holderName:'',
+    holderName: '',
     status: LOAN_STATUS.PENDING,
     collateralImages: []
   });
+
   useEffect(() => {
     const fetchLoans = async () => {
       try {
         setLoading(true);
         const data = await getLoans();
-        console.log(data.data.data);
         setLoans(data.data.data);
         setError(null);
       } catch (err) {
@@ -69,61 +77,65 @@ const Loan = () => {
 
     fetchLoans();
   }, []);
-const calculateAmountDue = (loan) => {
-  if (!loan || loan.status === LOAN_STATUS.PAID) return 0;
 
-  const loanAmount = parseFloat(loan.loanAmount) || 0;
-  const interestRate = parseFloat(loan.interestRate) || 0;
+  const calculateAmountDue = (loan) => {
+    if (!loan || loan.status === LOAN_STATUS.PAID) return 0;
 
-  try {
-    const issuedDate = new Date(loan.dateIssued);
-    const today = new Date();
-    let monthsElapsed = (today.getFullYear() - issuedDate.getFullYear()) * 12 +
-                        (today.getMonth() - issuedDate.getMonth());
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), issuedDate.getDate());
-    
-    if (isNaN(monthStart.getTime()) || monthStart > today) {
-      monthStart.setDate(1);
+    const loanAmount = parseFloat(loan.loanAmount) || 0;
+    const interestRate = parseFloat(loan.interestRate) || 0;
+
+    try {
+      const issuedDate = new Date(loan.dateIssued);
+      const today = new Date();
+      let monthsElapsed = (today.getFullYear() - issuedDate.getFullYear()) * 12 +
+                          (today.getMonth() - issuedDate.getMonth());
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), issuedDate.getDate());
+      
+      if (isNaN(monthStart.getTime())) {
+        monthStart.setDate(1);
+      }
+
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const daysElapsed = Math.max(0, Math.floor((today - monthStart) / msPerDay));
+
+      const monthlyInterest = (loanAmount * interestRate) / 100;
+      const dailyInterest = monthlyInterest / 30;
+
+      const totalInterest = (monthlyInterest * monthsElapsed) + (dailyInterest * daysElapsed);
+
+      return Math.round(loanAmount + totalInterest);
+    } catch (e) {
+      console.error("Error calculating amount due:", e);
+      return loanAmount;
     }
+  };
 
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const daysElapsed = Math.max(0, Math.floor((today - monthStart) / msPerDay));
-
-    const monthlyInterest = (loanAmount * interestRate) / 100;
-    const dailyInterest = monthlyInterest / 30; // approx daily interest
-
-    const totalInterest = (monthlyInterest * monthsElapsed) + (dailyInterest * daysElapsed);
-
-    return Math.round(loanAmount + totalInterest);
-  } catch (e) {
-    console.error("Error calculating amount due:", e);
-    return loanAmount;
-  }
-};
   const calculateDueDate = (issueDate, months = 6) => {
     const date = new Date(issueDate);
     date.setMonth(date.getMonth() + months);
     return date.toISOString().split('T')[0];
   };
+
   const getStatusStyle = (status) => {
-    const baseStyle = "flex items-center gap-1 font-semibold";
     switch(status) {
-      case LOAN_STATUS.ACTIVE: return `${baseStyle} text-amber-600`;
-      case LOAN_STATUS.PAID: return `${baseStyle} text-emerald-600`;
-      case LOAN_STATUS.DEFAULTED: return `${baseStyle} text-red-600`;
-      case LOAN_STATUS.PENDING: return `${baseStyle} text-blue-600`;
-      default: return baseStyle;
+      case LOAN_STATUS.ACTIVE: return 'bg-amber-100 text-amber-800';
+      case LOAN_STATUS.PAID: return 'bg-green-100 text-green-800';
+      case LOAN_STATUS.DEFAULTED: return 'bg-red-100 text-red-800';
+      case LOAN_STATUS.PENDING: return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
+
   const getStatusIcon = (status) => {
     switch(status) {
       case LOAN_STATUS.ACTIVE: return <PendingIcon className="text-amber-600" />;
-      case LOAN_STATUS.PAID: return <PaidIcon className="text-emerald-600" />;
+      case LOAN_STATUS.PAID: return <PaidIcon className="text-green-600" />;
       case LOAN_STATUS.DEFAULTED: return <DeleteIcon className="text-red-600" />;
       case LOAN_STATUS.PENDING: return <PendingIcon className="text-blue-600" />;
       default: return null;
     }
   };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -170,488 +182,560 @@ const calculateAmountDue = (loan) => {
     e.preventDefault();
     try {
       if (currentLoan) {
-        const loanAmountToPaid=calculateAmountDue(formData);
-        console.log(loanAmountToPaid);
-        const updatedLoan = await updateLoan({id:currentLoan._id,updateData:formData,loanPaidedAmount:loanAmountToPaid});
-        setLoans(loans.map(loan => 
-          loan._id === updatedLoan._id ? updatedLoan : loan
-        ));
+        const loanAmountToPaid = calculateAmountDue(formData);
+        const updatedLoan = await updateLoan({
+          id: currentLoan._id, 
+          updateData: formData,
+          loanPaidedAmount: loanAmountToPaid
+        });
       } else {
         const newLoan = await addLoan(formData);
+        setLoans([...loans, newLoan.data.data]);
       }
-      setShowForm(false);
+      setShowAddModal(false);
     } catch (error) {
-      // setError(error.message);
-      setShowForm(false);
+      setError(error.message || "Failed to process loan");
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this loan?')) {
       try {
-        await deleteLoan({loanId:id});
-        setLoans(loans.filter(loan => loan.id !== id));
+        await deleteLoan({ loanId: id });
+        setLoans(loans.filter(loan => loan._id !== id));
       } catch (error) {
-        setError(error.message);
+        setError(error.message || "Failed to delete loan");
       }
     }
   };
 
-  // Filter loans based on search and status
+  const resetFilters = () => {
+    setSortOption('newest');
+    setStatusFilter('all');
+    setMetalFilter('all');
+  };
+
   const filteredLoans = loans.filter(loan => {
-    if (statusFilter !== 'ALL' && loan.status !== statusFilter) return false;
+    if (statusFilter !== 'all' && loan.status !== statusFilter) return false;
+    if (metalFilter !== 'all' && loan.itemType !== metalFilter) return false;
     if (searchTerm && !(
-      loan.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loan.itemDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loan._id.toString().includes(searchTerm)
+      loan.customer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      loan.itemDescription?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      loan._id?.toString().includes(searchTerm)
     )) return false;
     return true;
   });
 
-  return (
-    <div className="min-h-screen bg-amber-50 p-4 md:p-6 font-sans">
-      {/* Header and controls */}
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-amber-900 flex items-center">
-            <LoanIcon className="mr-2 text-amber-600" />
-            Jewelry Loan Management
-          </h1>
-          <button 
-            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg shadow-md transition-colors"
-            onClick={() => {
-              setCurrentLoan(null);
-              setFormData({
-                customer: '',
-                customerID:'',
-                itemType: 'Gold',
-                itemDescription: '',
-                weight: '',
-                purity: '22K',
-                loanAmount: '',
-                interestRate: 12,
-                dateIssued: new Date().toISOString().split('T')[0],
-                dueDate: calculateDueDate(new Date().toISOString().split('T')[0]),
-                status: LOAN_STATUS.PENDING,
-                collateralImages: []
-              });
-              setShowForm(true);
-            }}
-          >
-            <AddIcon /> New Loan
-          </button>
-        </div>
+  const sortedLoans = [...filteredLoans].sort((a, b) => {
+    if (sortOption === 'newest') {
+      return new Date(b.dateIssued) - new Date(a.dateIssued);
+    } else {
+      return new Date(a.dateIssued) - new Date(b.dateIssued);
+    }
+  });
 
-        {/* Search and Filter */}
-        <div className="flex flex-col md:flex-row gap-3 mb-4">
-          <div className="relative flex-1">
-            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-amber-700" />
-            <input
-              type="text"
-              placeholder="Search loans by customer, item, or ID..."
-              className="w-full pl-10 pr-4 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="relative">
-            <button 
-              className="flex items-center justify-between gap-2 bg-amber-100 hover:bg-amber-200 text-amber-900 px-4 py-2 rounded-lg shadow transition-colors min-w-[150px]"
-              onClick={() => setShowDropdown(!showDropdown)}
-            >
-              {statusFilter === 'ALL' ? 'All Status' : statusFilter}
-              <ArrowIcon />
-            </button>
-            {showDropdown && (
-              <div className="absolute right-0 mt-1 w-full bg-white rounded-lg shadow-lg z-10 border border-amber-100">
-                <button 
-                  className="w-full text-left px-4 py-2 hover:bg-amber-50 transition-colors"
-                  onClick={() => {
-                    setStatusFilter('ALL');
-                    setShowDropdown(false);
-                  }}
-                >
-                  All Status
-                </button>
-                {Object.values(LOAN_STATUS).map(status => (
-                  <button
-                    key={status}
-                    className="w-full text-left px-4 py-2 hover:bg-amber-50 transition-colors"
-                    onClick={() => {
-                      setStatusFilter(status);
-                      setShowDropdown(false);
-                    }}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-yellow-500"></div>
       </div>
+    );
+  }
 
-      {/* Loans Table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden border border-amber-100">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-amber-600 text-white">
-              <tr>
-                <th className="p-3 text-left">Loan ID</th>
-                <th className="p-3 text-left">Customer</th>
-                <th className="p-3 text-left">Collateral</th>
-                <th className="p-3 text-left">Item Description</th>
-                <th className="p-3 text-left">Weight</th>
-                
-                <th className="p-3 text-left">Loan Amount</th>
-                <th className="p-3 text-left">Amount Due</th>
-                <th className="p-3 text-left">Issued Date</th>
-                <th className="p-3 text-left">Due Date</th>
-                
-                <th className="p-3 text-left">Holder Name</th>
-                
-                <th className="p-3 text-left">Status</th>
-                <th className="p-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLoans.map(loan => (
-                <tr key={loan._id} className="border-b border-amber-50 hover:bg-amber-50 transition-colors text-[12px]">
-                  <td className="p-3 text-[9px]">#{loan._id}</td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <CustomerIcon className="text-amber-700" />
-                      {loan.customer}
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <CustomerIcon className="text-amber-700" />
-                      {loan.customerID}
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      {loan.itemType === 'Gold' ? 
-                        <DiamondIcon className="text-amber-500" /> : 
-                        <SilverIcon className="text-gray-400" />}
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        loan.itemType === 'Gold' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {loan.itemType}
-                      </span>
-                      {loan.itemDescription}
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <WeightIcon className="text-amber-700" />
-                      {loan.weight}g ({loan.purity})
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <MoneyIcon className="text-amber-700" />
-                      ₹{loan.loanAmount.toLocaleString()}
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <div className={`flex items-center gap-2 ${
-                      loan.status === LOAN_STATUS.PAID ? 'text-gray-500' : 'text-amber-800 font-medium'
-                    }`}>
-                      <AmountDueIcon className={loan.status === LOAN_STATUS.PAID ? 'text-gray-500' : 'text-amber-600'} />
-                      ₹{calculateAmountDue(loan).toLocaleString()}
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <DateIcon className="text-amber-700" />
-                      {new Date(loan.dateIssued).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <div className="flex items-center gap-2">
-                      <DateIcon className="text-amber-700" />
-                      {new Date(loan.dueDate).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className='p-3'>
-                    <div className="flex items-center gap-2">
-                      {loan.holderName}
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <div className={getStatusStyle(loan.status)}>
-                      {getStatusIcon(loan.status)}<>
-  {loan.status}
-  {loan.status === "Paid" && loan.datePaid && (
-    <>  Date: {new Date(loan.datePaid).toLocaleDateString()} </>
-  )}
-</>
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-red-500 text-lg">{error}</div>
+      </div>
+    );
+  }
 
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Premium Header */}
+      <header className="bg-gradient-to-b from-yellow-700 to-yellow-600 shadow-lg mb-4">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center">
+              <div className="bg-yellow-500/20 p-3 rounded-xl backdrop-blur-sm border border-yellow-400/30">
+                <LoanIcon className="text-white text-2xl" />
+              </div>
+              <div className="ml-4">
+                <h1 className="text-2xl font-bold text-white tracking-tight font-serif">
+                  LuxeGold Loans
+                </h1>
+                <p className="text-yellow-100/90 text-sm mt-1 font-light">
+                  {loans.length} active loans in your portfolio
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+              <div className="relative flex-1 min-w-[200px]">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <SearchIcon className="text-yellow-600" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search loans..."
+                  className="pl-10 pr-4 py-2.5 border border-yellow-200 rounded-xl bg-white/80 shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-300 text-gray-700 placeholder-yellow-600/60 w-full"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="bg-white/90 hover:bg-white text-yellow-800 px-4 py-2.5 rounded-xl flex items-center gap-2 border border-yellow-200 shadow-sm hover:shadow-md transition-all"
+                >
+                  <FilterListIcon /> 
+                  <span>Filters</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setCurrentLoan(null);
+                    setFormData({
+                      customer: '',
+                      customerID: '',
+                      itemType: 'Gold',
+                      itemDescription: '',
+                      weight: '',
+                      purity: '22K',
+                      loanAmount: '',
+                      interestRate: 12,
+                      dateIssued: new Date().toISOString().split('T')[0],
+                      dueDate: calculateDueDate(new Date().toISOString().split('T')[0]),
+                      holderName: '',
+                      status: LOAN_STATUS.PENDING,
+                      collateralImages: []
+                    });
+                    setShowAddModal(true);
+                  }}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap shadow-md hover:shadow-lg transition-all"
+                >
+                  <AddIcon /> 
+                  <span>New Loan</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
 
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6 py-6 -mt-6">
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="bg-white rounded-xl shadow-lg mb-6 border border-yellow-100 overflow-hidden">
+            <div className="p-5">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-800 flex items-center">
+                  <FilterListIcon className="mr-2 text-yellow-600" />
+                  Filter Loans
+                </h3>
+                <button 
+                  onClick={resetFilters}
+                  className="text-sm text-yellow-700 hover:text-yellow-900 flex items-center gap-1 font-medium"
+                >
+                  <ClearIcon fontSize="small" /> Reset
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                    className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-300 focus:border-amber-300 bg-white/70"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                  </select>
+                </div>
+                
+                <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-300 focus:border-amber-300 bg-white/70"
+                  >
+                    <option value="all">All Statuses</option>
+                    {Object.values(LOAN_STATUS).map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Metal Type</label>
+                  <select
+                    value={metalFilter}
+                    onChange={(e) => setMetalFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-300 focus:border-amber-300 bg-white/70"
+                  >
+                    <option value="all">All Metals</option>
+                    <option value="Gold">Gold</option>
+                    <option value="Silver">Silver</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loans Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {sortedLoans.length === 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-16 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl border-2 border-dashed border-amber-200">
+              <SearchIcon className="text-gray-400 text-4xl mb-3" />
+              <p className="text-gray-500 text-lg">No loans found</p>
+              <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filters</p>
+              <button
+                className="mt-4 bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg font-medium shadow-sm hover:shadow-md transition-all"
+                onClick={() => {
+                  setCurrentLoan(null);
+                  setShowAddModal(true);
+                }}
+              >
+                <AddIcon className="mr-2" />
+                Create New Loan
+              </button>
+            </div>
+          ) : (
+            sortedLoans.map(loan => (
+              <div key={loan._id} className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                {/* Loan Image */}
+                <div className="relative bg-gradient-to-br from-amber-50 to-yellow-50 flex items-center justify-center p-6 border-b border-amber-100 h-48">
+                  {loan.collateralImages?.[0] ? (
+                    <img
+                      src={loan.collateralImages[0]}
+                      alt={loan.itemDescription}
+                      className="w-full h-full object-contain object-center"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-yellow-200">
+                      {loan.itemType === 'Gold' ? (
+                        <DiamondIcon className="w-16 h-16" />
+                      ) : (
+                        <SilverIcon className="w-16 h-16" />
+                      )}
                     </div>
-                  </td>
-                  <td className="p-3">
+                  )}
+                  <div className="absolute top-3 right-3">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusStyle(loan.status)}`}>
+                      {loan.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Loan Details */}
+                <div className="p-5">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 truncate">
+                      {loan.itemDescription || 'Jewelry Loan'}
+                    </h3>
+                    <span className="text-sm font-medium text-yellow-600">
+                      #{loan._id?.substring(loan._id.length - 6)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                      <CustomerIcon className="text-amber-600 text-sm" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{loan.customer}</p>
+                      <p className="text-xs text-gray-500">{loan.customerID}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                    <div>
+                      <p className="text-gray-500">Metal</p>
+                      <p className="font-medium capitalize">
+                        {loan.itemType} ({loan.purity})
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Weight</p>
+                      <p className="font-medium">{loan.weight}g</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Loan Amount</p>
+                      <p className="font-medium">₹{loan.loanAmount?.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Amount Due</p>
+                      <p className="font-medium">
+                        ₹{calculateAmountDue(loan)?.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                    <div>
+                      <p className="text-xs text-gray-400">Issued Date</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(loan.dateIssued).toLocaleDateString()}
+                      </p>
+                    </div>
                     <div className="flex gap-2">
-                      <button 
-                        className="text-amber-700 hover:text-amber-900 transition-colors"
+                      <button
                         onClick={() => {
                           setCurrentLoan(loan);
                           setFormData({
                             ...loan,
                             dueDate: loan.dueDate || calculateDueDate(loan.dateIssued)
                           });
-                          setShowForm(true);
+                          setShowAddModal(true);
                         }}
+                        className="p-2 text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors"
+                        title="Edit"
                       >
-                        <EditIcon />
+                        <EditIcon className="w-5 h-5" />
                       </button>
-                      <button 
-                        className="text-red-500 hover:text-red-700 transition-colors"
+                      <button
                         onClick={() => handleDelete(loan._id)}
+                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete"
                       >
-                        <DeleteIcon />
+                        <DeleteIcon className="w-5 h-5" />
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
-      </div>
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-amber-100 p-4">
-              <h2 className="text-xl font-bold text-amber-900">
+      </main>
+
+      {/* Loan Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b p-4 sticky top-0 bg-white z-10">
+              <h2 className="text-xl font-semibold text-gray-800">
                 {currentLoan ? 'Edit Loan Details' : 'Create New Loan'}
               </h2>
-              <button 
-                className="text-gray-500 hover:text-gray-700"
-                onClick={() => setShowForm(false)}
-              >
-                ×
+              <button onClick={() => setShowAddModal(false)} className="text-gray-500 hover:text-gray-700">
+                <CloseIcon />
               </button>
             </div>
-            <form className="p-4">
-              {error && (
-                <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
-                  {error}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Customer Name</label>
-                  <input
-                    type="text"
-                    name="customer"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.customer}
-                    onChange={handleInputChange}
-                    placeholder="Enter customer name"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Customer ID</label>
-                  <input
-                    type="text"
-                    name="customerID"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.customerID}
-                    onChange={handleInputChange}
-                    placeholder="Enter customerID"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Collateral Type</label>
-                  <select
-                    name="itemType"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.itemType}
-                    onChange={handleInputChange}
-                  >
-                    <option value="Gold">Gold</option>
-                    <option value="Silver">Silver</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-amber-900 mb-1">Item Description</label>
-                <input
-                  type="text"
-                  name="itemDescription"
-                  className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                  value={formData.itemDescription}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 22K Gold Chain, Silver Coins, etc."
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Weight (grams)</label>
-                  <input
-                    type="number"
-                    name="weight"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.weight}
-                    onChange={handleInputChange}
-                    placeholder="Enter weight in grams"
-                    step="0.1"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Purity Only Percentage value(eg. 100% then only give input 100)</label>
-                  <input 
-                    name="purity"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.purity}
-                    onChange={handleInputChange}
-                  >
-                    </input>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Loan Amount (₹)</label>
-                  <input
-                    type="number"
-                    name="loanAmount"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.loanAmount}
-                    onChange={handleInputChange}
-                    placeholder="Enter loan amount"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Interest Rate (%)</label>
-                  <input
-                    type="number"
-                    name="interestRate"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.interestRate}
-                    onChange={handleInputChange}
-                    placeholder="Enter interest rate"
-                    step="0.5"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Issued Date</label>
-                  <input
-                    type="date"
-                    name="dateIssued"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.dateIssued}
-                    onChange={(e) => {
-                      handleInputChange(e);
-                      setFormData(prev => ({
-                        ...prev,
-                        dueDate: calculateDueDate(e.target.value)
-                      }));
-                    }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Due Date</label>
-                  <input
-                    type="date"
-                    name="dueDate"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.dueDate}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+            <form onSubmit={handleSubmit}>
+              <div className="p-6 space-y-4">
+                {error && <div className="text-red-500 p-2 bg-red-50 rounded-md">{error}</div>}
                 
-                <div>
-                  <label className="block text-sm font-medium text-amber-900 mb-1">Holder Name</label>
-                  <input
-                    type="text"
-                    name="holderName"
-                    className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                    value={formData.holderName}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-amber-900 mb-1">Status</label>
-                <select
-                  name="status"
-                  className="w-full p-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                >
-                  {Object.values(LOAN_STATUS).map(status => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
-              </div>
-              
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-amber-900 mb-1">
-                  Collateral Images
-                </label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {formData.collateralImages.map((image, index) => (
-                    <div key={index} className="relative">
-                      <img 
-                        src={image} 
-                        alt={`Collateral ${index + 1}`} 
-                        className="h-20 w-20 object-cover rounded"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      name="customer"
+                      value={formData.customer}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer ID <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      name="customerID"
+                      value={formData.customerID}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Metal Type <span className="text-red-500">*</span></label>
+                    <select
+                      name="itemType"
+                      value={formData.itemType}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="Gold">Gold</option>
+                      <option value="Silver">Silver</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Purity <span className="text-red-500">*</span></label>
+                    <input
+                      name="purity"
+                      value={formData.purity}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Item Description <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      name="itemDescription"
+                      value={formData.itemDescription}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Weight (grams) <span className="text-red-500">*</span></label>
+                    <input
+                      type="number"
+                      name="weight"
+                      value={formData.weight}
+                      onChange={handleInputChange}
+                      required
+                      step="0.1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Loan Amount (₹) <span className="text-red-500">*</span></label>
+                    <input
+                      type="number"
+                      name="loanAmount"
+                      value={formData.loanAmount}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Interest Rate (%) <span className="text-red-500">*</span></label>
+                    <input
+                      type="number"
+                      name="interestRate"
+                      value={formData.interestRate}
+                      onChange={handleInputChange}
+                      required
+                      step="0.5"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Issued Date <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-gray-400"><DateIcon fontSize="small" /></span>
+                      <input
+                        type="date"
+                        name="dateIssued"
+                        value={formData.dateIssued}
+                        onChange={(e) => {
+                          handleInputChange(e);
+                          setFormData(prev => ({
+                            ...prev,
+                            dueDate: calculateDueDate(e.target.value)
+                          }));
+                        }}
+                        required
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
                       />
                     </div>
-                  ))}
-                </div>
-                <label className="flex flex-col items-center justify-center w-full p-4 border-2 border-amber-300 border-dashed rounded-lg cursor-pointer bg-amber-50 hover:bg-amber-100">
-                  <div className="flex flex-col items-center justify-center">
-                    <UploadIcon className="text-amber-600 mb-2" />
-                    <p className="text-sm text-amber-700">
-                      {isUploading ? 'Uploading...' : 'Click to upload images'}
-                    </p>
                   </div>
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    multiple 
-                    onChange={handleImageUpload}
-                    accept="image/*"
-                  />
-                </label>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Due Date <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-gray-400"><DateIcon fontSize="small" /></span>
+                      <input
+                        type="date"
+                        name="dueDate"
+                        value={formData.dueDate}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Holder Name</label>
+                    <input
+                      type="text"
+                      name="holderName"
+                      value={formData.holderName}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status <span className="text-red-500">*</span></label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      {Object.values(LOAN_STATUS).map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Collateral Images</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {formData.collateralImages.map((image, index) => (
+                        <div key={index} className="relative">
+                          <img 
+                            src={image} 
+                            alt={`Collateral ${index + 1}`} 
+                            className="h-20 w-20 object-cover rounded border border-gray-200"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <label className="flex flex-col items-center justify-center w-full p-4 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                      <div className="flex flex-col items-center justify-center">
+                        <UploadIcon className="text-gray-500 mb-2" />
+                        <p className="text-sm text-gray-600">
+                          {isUploading ? 'Uploading...' : 'Click to upload images'}
+                        </p>
+                      </div>
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        multiple 
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-amber-100">
+              <div className="flex justify-end gap-2 p-4 border-t sticky bottom-0 bg-white">
                 <button 
-                  type="button"
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors"
-                  onClick={() => setShowForm(false)}
+                  type="button" 
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button 
-                  type="button"
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
-                  onClick={handleSubmit}
+                  type="submit" 
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
                   disabled={isUploading}
                 >
+                  <SaveIcon fontSize="small" />
                   {currentLoan ? 'Update Loan' : 'Create Loan'}
                 </button>
               </div>

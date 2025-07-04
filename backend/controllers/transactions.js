@@ -14,13 +14,10 @@ export const getTransactions = async (req, res) => {
 export const addTransaction = async (req, res) => {
   try {
     const newTransaction = req.body;
-
     const owner = await Owner.findOne();
     if (!owner) return res.status(404).json({ message: "Owner not found" });
-
     owner.transactions.push(newTransaction);
-    await owner.save();
-
+    await owner.save(); 
     return res.status(201).json({ message: "Transaction added", data: owner.transactions });
   } catch (error) {
     console.error(error);

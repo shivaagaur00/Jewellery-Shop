@@ -7,6 +7,7 @@ import  Customers  from './Customers';
 import Orders from './Orders';
 import Transactions from './Transactions';
 import Settings from './Settings';
+import DeliveryStatusUpdate from "./DeliveryStatusUpdate";
 const MainHome = ({ activeTab }) => {
   const renderContent = () => {
     switch(activeTab) {
@@ -24,6 +25,8 @@ const MainHome = ({ activeTab }) => {
         return <Settings/>;
       case 'loan':
         return <Loan/>;
+      case 'update':
+        return <DeliveryStatusUpdate/>;   
       default:
         return <DashboardContent />;
     }
@@ -31,30 +34,13 @@ const MainHome = ({ activeTab }) => {
 
   return (
     <div className="flex-1 bg-gray-50 overflow-y-auto">
-      <div className="p-1">
+      <div >
         {renderContent()}
       </div>
     </div>
   );
 };
 
-const CustomersContent = () => (
-  <div className="bg-white rounded-xl shadow p-6">
-    <p>Customers management content will appear here</p>
-  </div>
-);
-
-// const TransactionsContent = () => (
-//   <div className="bg-white rounded-xl shadow p-6">
-//     <p>Transactions content will appear here</p>
-//   </div>
-// );
-
-const SettingsContent = () => (
-  <div className="bg-white rounded-xl shadow p-6">
-    <p>Settings content will appear here</p>
-  </div>
-);
 
 const OwnerLayout = () => {
   const [activeTab, setActiveTab] = useState('dashboard');

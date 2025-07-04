@@ -1,13 +1,12 @@
 import "./App.css";
 import HomePage from "./components/HomePage";
-import Header from "./components/Header";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import Footer from "./components/Footer";
 import OwnerLayout from "./components/OwnerLayout";
 import CustomerDetail from "./components/CustomerDetail.js";
 import { Provider } from 'react-redux';
 import { store } from './store/store';
 import ProtectedRoute from './components/ProtectedRoute';
+import DeliveryStatusUpdate from "./components/DeliveryStatusUpdate.js";
 
 function App() {
   return (
@@ -29,6 +28,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CustomerDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/deliveryStatusUpdate" 
+              element={
+                <ProtectedRoute>
+                  <DeliveryStatusUpdate />
                 </ProtectedRoute>
               }
             />

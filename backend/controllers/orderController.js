@@ -1,5 +1,4 @@
 import Owner from "../Models/Owner.js";
-
 export const addOrder = async (req, res) => {
     try {
         let { data } = req.body;
@@ -34,6 +33,7 @@ export const addOrder = async (req, res) => {
             deliverDate: data.deliverDate ? data.deliverDate : "",
             status: data.status,
             image:data.image,
+            
         };
         owner.orders.push(odr);
         owner.transactions.push(txn);
@@ -139,14 +139,119 @@ export const getOrder = async (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
     }
 };
-export const getOrders=async(req,res)=>{
+export const getOrders = async (req, res) => {
     try {
-        let owner=await Owner.findOne();
+        let owner = await Owner.findOne();
         if (!owner) {
             return res.status(404).json({ message: "Owner not found" });
         }
-        return res.status(200).json({data:owner.orders});
+
+        const orders = [];
+
+        // Get orders from all consumers
+        for (const consumer of owner.consumers) {
+            if (consumer.orders && consumer.orders.length > 0) {
+                for (const order of consumer.orders) {
+                    orders.push({
+                        ...order._doc,
+                        source: 'consumer',
+                        consumerName: consumer.name,
+                        consumerId: consumer.id,
+                    });
+                }
+            }
+        }
+
+        // Get orders directly from owner.orders
+        if (owner.orders && owner.orders.length > 0) {
+            for (const order of owner.orders) {
+                orders.push({
+                    ...order._doc,
+                    source: 'owner'
+                });
+            }
+        }
+
+        return res.status(200).json({ data: orders });
+
     } catch (error) {
-        console.log(error);
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
     }
-}
+};
+
+
+export const updateDeliveryStatus = async (req, res) => {
+  try {
+    const { orderId, updates } = req.body;
+    const owner = await Owner.findOne();
+    
+    if (!owner) {
+      return res.status(404).json({ message: "Owner not found" });
+    }
+
+    let orderUpdated = false;
+    for (const customer of owner.consumers) {
+      const orderIndex = customer.notDeliverOrders.findIndex(
+        order => order._id.toString() === orderId
+      );
+
+      if (orderIndex !== -1) {
+        customer.notDeliverOrders[orderIndex] = {
+          ...customer.notDeliverOrders[orderIndex],
+          ...updates
+        };
+        orderUpdated = true;
+        break;
+      }
+    }
+
+    if (!orderUpdated) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    await owner.save();
+
+    return res.status(200).json({ 
+      message: "Delivery status updated successfully",
+      updatedOrder: updates
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ 
+      message: "Server error", 
+      error: error.message 
+    });
+  }
+};
+
+export const getAllNotDeliveredOrders = async (req, res) => {
+  try {
+    const owner = await Owner.findOne();
+    
+    if (!owner) {
+      return res.status(404).json({ message: "Owner not found" });
+    }
+
+    const allNotDeliveredOrders = owner.consumers.flatMap(customer => 
+      customer.notDeliverOrders.map(order => ({
+        ...order.toObject(),
+        customerId: customer.id,
+        customerName: customer.name,
+        customerContact: customer.contactNumber
+      }))
+    );
+
+    return res.status(200).json({ 
+      message: "All not delivered orders fetched successfully",
+      count: allNotDeliveredOrders.length,
+      orders: allNotDeliveredOrders
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ 
+      message: "Server error", 
+      error: error.message 
+    });
+  }
+};

@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { addCustomer, addItem, addLoan, deleteCustomer, deleteItem, deleteLoan, getCustomers, getDetails, getItems, getLoans, getSpecificCustomer, ownerLogin, updateItem, updateLoan } from "../controllers/authController.js";
 import { addSale } from "../controllers/salesControllers.js";
+import { getGoldPrice } from "../controllers/LivePrice.js";
 import { addTransaction, deleteTransaction, editTransaction, getTransactions } from "../controllers/transactions.js";
-import { addOrder, deleteOrder, editOrder, getOrder, getOrders } from "../controllers/orderController.js";
+import { addOrder, deleteOrder, editOrder, getAllNotDeliveredOrders, getOrder, getOrders, updateDeliveryStatus } from "../controllers/orderController.js";
 const ownerRouter=Router();
 ownerRouter.post("/ownerLogin",ownerLogin);
 ownerRouter.post("/getItems",getItems);
@@ -28,5 +29,9 @@ ownerRouter.post("/deleteOrder",deleteOrder);
 ownerRouter.post("/getOrder",getOrder);
 ownerRouter.post("/getOrders",getOrders);
 ownerRouter.post("/getDashBoard",getDetails);
+ownerRouter.get("/getGoldPrice",getGoldPrice);
+
+ownerRouter.post("/updateStatus",updateDeliveryStatus);
+ownerRouter.get("/getAllNotDeliveredOrders",getAllNotDeliveredOrders);
 
 export default ownerRouter;

@@ -1,7 +1,7 @@
 import axios from "axios";
-// const URL="http://localhost:8000"
+const URL="http://localhost:8000"
 
-const URL="https://jewellery-shop-izh1.onrender.com"
+// const URL="https://jewellery-shop-izh1.onrender.com"
 export const login=async (data)=>{
     try{
         console.log(0);
@@ -43,6 +43,7 @@ export const addItem=async (data)=>{
     try{
         // console.log("Yes addItem Comes");
         // let res={status:400,message:"Hello"};
+        console.log(data);
         let res=await axios.post(`${URL}/addItem`,data);
         return res;
     }
@@ -247,3 +248,21 @@ export const getDashBoard=async()=>{
         console.log(error);
     }
 }
+export const getAllNotDeliveredOrders =async()=>{
+    try {
+        let res=await axios.get(`${URL}/getAllNotDeliveredOrders`);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+export const updateDeliveryStatus =async(data)=>{
+    try {
+        let res=await axios.post(`${URL}/updateStatus`,data);
+        return res;
+    } catch (error) {
+        console.log(error);
+    }
+}
+

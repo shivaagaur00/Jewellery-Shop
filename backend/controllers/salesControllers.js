@@ -53,6 +53,7 @@ export const addSale = async (req, res) => {
       if (customer) {
         customer.transactions.push(transaction);
         customer.sales.push(latestSale._id);
+        customer.purchases.push()
       }
     } else if (!data.isExistingCustomer) {
       const newCustomer = {

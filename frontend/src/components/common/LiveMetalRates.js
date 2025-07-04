@@ -9,11 +9,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import LocationCityIcon from '@mui/icons-material/LocationCity';
 
 const LiveMetalRates = () => {
-  // Alpha Vantage API configuration
-  const API_KEY = '0GI5NC7WFG6QBTQP';
-  const GOLD_SYMBOL = 'GC=F';
-  const SILVER_SYMBOL = 'SI=F';
-  const BASE_URL = 'https://www.alphavantage.co/query';
+  const API_KEY = 'goldapi-vskn7slxu8tuwu-io'; 
+  const BASE_URL = 'https://www.goldapi.io/api';
 
   const [rates, setRates] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,65 +21,65 @@ const LiveMetalRates = () => {
 
   const cities = ['Mumbai', 'Delhi', 'Chennai', 'Kolkata', 'Bangalore', 'Hyderabad'];
 
-  const conversionRates = {
-    gold: {
-      ozToGram: 31.1035,
-      usdToInr: 83.5,
-      gst: 3,
-      makingCharge: 14
-    },
-    silver: {
-      ozToGram: 31.1035,
-      usdToInr: 83.5,
-      gst: 3
-    }
+  // City-based premium factors (percentage added to base price)
+  const cityPremiums = {
+    Mumbai: 1.5,
+    Delhi: 1.8,
+    Chennai: 1.2,
+    Kolkata: 1.3,
+    Bangalore: 1.6,
+    Hyderabad: 1.4
   };
 
   const fetchMetalRates = async () => {
     try {
       setLoading(true);
       
-      const goldResponse = await fetch(
-        `${BASE_URL}?function=GLOBAL_QUOTE&symbol=${GOLD_SYMBOL}&apikey=${API_KEY}`
-      );
-      const goldData = await goldResponse.json();
+      // Fetch gold rates
+      const goldResponse = await fetch(`${BASE_URL}/XAU/INR`, {
+        headers: {
+          'x-access-token': API_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
       
-      const silverResponse = await fetch(
-        `${BASE_URL}?function=GLOBAL_QUOTE&symbol=${SILVER_SYMBOL}&apikey=${API_KEY}`
-      );
+      // Fetch silver rates
+      const silverResponse = await fetch(`${BASE_URL}/XAG/INR`, {
+        headers: {
+          'x-access-token': API_KEY,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!goldResponse.ok || !silverResponse.ok) {
+        throw new Error('API rate limit exceeded or service unavailable');
+      }
+      
+      const goldData = await goldResponse.json();
       const silverData = await silverResponse.json();
       
-      const goldPrevClose = parseFloat(goldData['Global Quote']['08. previous close']);
-      const silverPrevClose = parseFloat(silverData['Global Quote']['08. previous close']);
+      // Apply city premium
+      const cityPremiumFactor = 1 + (cityPremiums[selectedCity] / 100);
       
-      const goldPricePerGram = (parseFloat(goldData['Global Quote']['05. price']) / 
-                              conversionRates.gold.ozToGram * 
-                              conversionRates.gold.usdToInr);
+      // Calculate rates per gram (1 troy ounce = 31.1035 grams)
+      const goldPricePerGram = (goldData.price / 31.1035) * cityPremiumFactor;
+      const silverPricePerGram = (silverData.price / 31.1035) * cityPremiumFactor;
       
-      const silverPricePerGram = (parseFloat(silverData['Global Quote']['05. price']) / 
-                                conversionRates.silver.ozToGram * 
-                                conversionRates.silver.usdToInr);
-      
-      const goldPrevPricePerGram = (goldPrevClose / 
-                                   conversionRates.gold.ozToGram * 
-                                   conversionRates.gold.usdToInr);
-      
-      const silverPrevPricePerGram = (silverPrevClose / 
-                                     conversionRates.silver.ozToGram * 
-                                     conversionRates.silver.usdToInr);
+      // Previous close prices
+      const goldPrevPricePerGram = (goldData.prev_close_price / 31.1035) * cityPremiumFactor;
+      const silverPrevPricePerGram = (silverData.prev_close_price / 31.1035) * cityPremiumFactor;
       
       setRates({
         gold: {
           rate24k: goldPricePerGram,
           rate22k: goldPricePerGram * 0.9167,
           yesterday24k: goldPrevPricePerGram,
-          taxRate: conversionRates.gold.gst,
-          makingCharge: conversionRates.gold.makingCharge
+          taxRate: 4, // GST
         },
         silver: {
           rate: silverPricePerGram,
           yesterdayRate: silverPrevPricePerGram,
-          taxRate: conversionRates.silver.gst
+          taxRate: 4 // GST
         },
         timestamp: new Date().toISOString()
       });
@@ -90,20 +87,24 @@ const LiveMetalRates = () => {
       setLastUpdated(new Date().toLocaleTimeString());
       setError(null);
     } catch (err) {
-      setError('Failed to fetch rates. Alpha Vantage has rate limits (5 calls/min). Please try again later.');
+      setError('Failed to fetch live rates. Using cached data instead.');
       console.error('Error fetching metal rates:', err);
+      
+      // Fallback data with city premium applied
+      const cityPremiumFactor = 1 + (cityPremiums[selectedCity] / 100);
+      const baseGoldPrice = 6235.50 * cityPremiumFactor;
+      const baseSilverPrice = 74.85 * cityPremiumFactor;
       
       setRates({
         gold: {
-          rate24k: 6235.50,
-          rate22k: 5717.25,
-          yesterday24k: 6180.75,
+          rate24k: baseGoldPrice,
+          rate22k: baseGoldPrice * 0.9167,
+          yesterday24k: 6180.75 * cityPremiumFactor,
           taxRate: 3,
-          makingCharge: 14
         },
         silver: {
-          rate: 74.85,
-          yesterdayRate: 73.20,
+          rate: baseSilverPrice,
+          yesterdayRate: 73.20 * cityPremiumFactor,
           taxRate: 3
         },
         timestamp: new Date().toISOString()
@@ -125,8 +126,7 @@ const LiveMetalRates = () => {
   const calculateFinalPrice = (baseRate, isGold = false) => {
     if (!rates) return 0;
     const taxAmount = baseRate * (isGold ? rates.gold.taxRate : rates.silver.taxRate) / 100;
-    const makingCharge = isGold ? baseRate * rates.gold.makingCharge / 100 : 0;
-    return baseRate + taxAmount + makingCharge;
+    return baseRate + taxAmount ;
   };
 
   const formatNumber = (num) => {
@@ -138,8 +138,8 @@ const LiveMetalRates = () => {
 
   const getTrendIcon = (current, previous) => {
     if (!current || !previous) return <CompareArrowsIcon className="text-gray-400" />;
-    if (current > previous) return <TrendingUpIcon className="text-red-500" />;
-    if (current < previous) return <TrendingDownIcon className="text-green-500" />;
+    if (current > previous) return <TrendingUpIcon className="text-green-500" />;
+    if (current < previous) return <TrendingDownIcon className="text-red-500" />;
     return <CompareArrowsIcon className="text-gray-500" />;
   };
 
@@ -163,6 +163,9 @@ const LiveMetalRates = () => {
         <h2 className="text-3xl font-extrabold text-gray-900 flex items-center">
           <CurrencyRupeeIcon className="mr-2 text-amber-500" />
           Live Gold & Silver Rates
+          <span className="ml-2 text-sm font-normal bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+            {selectedCity}
+          </span>
         </h2>
         
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -224,16 +227,20 @@ const LiveMetalRates = () => {
       ) : (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* Gold Card */}
             <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-6 shadow-lg hover:shadow-xl transition duration-300">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-2xl font-bold text-amber-900 flex items-center">
                   <img src="https://cdn-icons-png.flaticon.com/512/2583/2583344.png" alt="Gold" className="w-6 h-6 mr-2" />
                   Gold Rates
                 </h3>
-                <span className="text-xs bg-amber-200 text-amber-900 px-2 py-1 rounded-full">
-                  24K Pure
-                </span>
+                <div className="flex flex-col items-end">
+                  <span className="text-xs bg-amber-200 text-amber-900 px-2 py-1 rounded-full mb-1">
+                    24K Pure
+                  </span>
+                  <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                    City Premium: +{cityPremiums[selectedCity]}%
+                  </span>
+                </div>
               </div>
               
               <div className="space-y-4">
@@ -250,15 +257,6 @@ const LiveMetalRates = () => {
                   <span className="font-bold text-gray-900">₹{formatNumber(rates?.gold?.rate22k)}</span>
                 </div>
                 
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 flex items-center">
-                    Making Charges
-                    <Tooltip title="Charges for crafting jewelry" arrow>
-                      <InfoIcon fontSize="small" className="ml-1 text-gray-400" />
-                    </Tooltip>
-                  </span>
-                  <span className="font-bold text-gray-900">{rates?.gold?.makingCharge}%</span>
-                </div>
                 
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">GST</span>
@@ -275,17 +273,20 @@ const LiveMetalRates = () => {
                 </div>
               </div>
             </div>
-            
-            {/* Silver Card */}
             <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 shadow-lg hover:shadow-xl transition duration-300">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-2xl font-bold text-gray-900 flex items-center">
                   <img src="https://cdn-icons-png.flaticon.com/512/2583/2583436.png" alt="Silver" className="w-6 h-6 mr-2" />
                   Silver Rates
                 </h3>
-                <span className="text-xs bg-gray-200 text-gray-900 px-2 py-1 rounded-full">
-                  Pure 999
-                </span>
+                <div className="flex flex-col items-end">
+                  <span className="text-xs bg-gray-200 text-gray-900 px-2 py-1 rounded-full mb-1">
+                    Pure 999
+                  </span>
+                  <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
+                    City Premium: +{cityPremiums[selectedCity]}%
+                  </span>
+                </div>
               </div>
               
               <div className="space-y-4">
@@ -343,8 +344,8 @@ const LiveMetalRates = () => {
             <h4 className="font-medium text-amber-900 mb-2">Note:</h4>
             <p className="text-sm text-amber-800">
               Rates are calculated from international prices (per troy ounce) converted to INR per gram, 
-              including GST (3%) + making charges (14% for gold). Actual prices may vary based on design 
-              and additional charges. Rates are updated every minute when auto-refresh is enabled.
+              including GST (4%). Prices include a city premium based on local market conditions.
+              Actual prices may vary based on design and additional charges. Rates are updated every minute when auto-refresh is enabled.
             </p>
           </div>
         </>

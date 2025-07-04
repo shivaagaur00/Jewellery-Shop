@@ -14,8 +14,8 @@ import { useDispatch } from 'react-redux';
 import { logout } from '../store/authSlice';
 import { useNavigate } from 'react-router-dom';
 import MJnoBG from "../assets/MJnoBG.png";
-
-const SideBar = ({ activeTab, setActiveTab }) => {
+import EditLocationAltIcon from '@mui/icons-material/EditLocationAlt';
+const SideBar = ({activeTab,setActiveTab }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -29,7 +29,9 @@ const SideBar = ({ activeTab, setActiveTab }) => {
     { id: "customers", label: "Customers", icon: <CustomersIcon /> },
     { id: "loan", label: "Loan", icon: <RealEstateAgentIcon /> },
     { id: "transactions", label: "Transactions", icon: <TransactionsIcon /> },
-    { id: "settings", label: "Settings", icon: <SettingsIcon /> },
+    { id: "update", label: "Update Status", icon: <EditLocationAltIcon /> },
+    { id: "settings", label: "Settings", icon: <SettingsIcon /> }, 
+  
   ];
 
   const handleLogout = async () => {
@@ -52,13 +54,12 @@ const SideBar = ({ activeTab, setActiveTab }) => {
         collapsed ? "w-28" : "w-64"
       } transition-all duration-300 ease-in-out shadow-xl`}
     >
-      {/* Header */}
       <div className="p-4 flex items-center justify-between border-b border-gray-700">
         {!collapsed ? (
           <div className="flex flex-col justify-center items-center w-full h-full text-center">
             <img src={MJnoBG} alt="MJ Logo" className="w-20 h-auto mb-2" />
             <h1 className="text-xl font-serif font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-amber-200">
-              Luxe Jewels
+              Jewells
             </h1>
           </div>
         ) : (
@@ -75,7 +76,6 @@ const SideBar = ({ activeTab, setActiveTab }) => {
         </button>
       </div>
 
-      {/* Menu Items */}
       <div className="flex-1 overflow-y-auto py-4 px-2">
         {menuItems.map((item) => (
           <button
@@ -107,7 +107,6 @@ const SideBar = ({ activeTab, setActiveTab }) => {
         ))}
       </div>
 
-      {/* Footer */}
       <div className="p-4 border-t border-gray-700">
         <button
           onMouseEnter={() => setHoveredItem("logout")}

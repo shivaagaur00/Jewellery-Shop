@@ -5,6 +5,13 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        dosis: ['"Dosis"', 'sans-serif'],
+        edu: ['"Edu NSW ACT Cursive"', 'cursive'],
+        marker: ['"Permanent Marker"', 'cursive'],
+        titillium: ['"Titillium Web"', 'sans-serif'],
+        winky: ['"Winky Sans"', 'sans-serif'],
+      },
       animation: {
         'fade-in': 'fadeIn 1s ease-out',
         'slide-up': 'slideUp 0.8s ease-out',
@@ -23,4 +30,3 @@ module.exports = {
   },
   plugins: [],
 }
-

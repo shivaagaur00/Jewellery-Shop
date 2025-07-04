@@ -12,8 +12,6 @@ const HomePage = () => {
   const dispatch = useDispatch();
   const { isAuthenticated, loading, error } = useSelector((state) => state.auth);
   const navigate = useNavigate();
-
-  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/ownerLayout");
